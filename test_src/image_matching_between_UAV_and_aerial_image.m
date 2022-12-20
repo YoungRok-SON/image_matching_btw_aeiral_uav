@@ -26,11 +26,11 @@ resize_factor        = gsd_uav_img/gsd_aerial_map;
 target_size_uav_img  = int16([height_image width_image]*resize_factor);
 
 % Orientation matching
-target_orientation = -130; % [deg]
+target_orientation   = -130; % [deg]
 
 % Feature point extraction
-
-
+num_big_SIFT_point   = 1000;
+num_devided_area     = 1500;
 %% Load images
 
 % Load Aerial Map data
@@ -60,11 +60,37 @@ rotated_img = imrotate(downsampled_uav_img, target_orientation, "bilinear");
 figure("Name","UAV image");
 imshow(rotated_img);
 
+% Map Image crop
+cropped_map = imcrop(map_img_gray);
+imshow(cropped_map);
+hold on
+
 % Feature point extraction
 %%% Method 1: Using only SIFT feature points
+feature_points_uav    = detectSIFTFeatures(rotated_img);
+feature_points_aerial = detectSIFTFeatures(cropped_map);
+
+%%%%%% UAV Image
+figure("Name","UAV image");
+imshow(rotated_img);
+hold on
+strong_feature_points_uav = feature_points_uav.selectStrongest(num_strong_SIFT_feature_point);
+plot(strong_feature_points_uav,'ShowOrientation',100)
+
+%%%%%% Aerial Image
+figure("Name","Map image");
+plot(feature_points_aerial,'ShowOrientation',100)
 
 
 %%% MEthod 2: Using SLIC point as feature points
+[label_uav, num_of_label_uav] = superpixels(rotated_img,num_devided_area);
+[label_aerial, num_of_label_aeiral] = superpixels(cropped_map,num_devided_area);
+%%%%%% UAV Image
+Boundary_mask_uav = boundarymask(label_uav);
+imshow(imoverlay(rotated_img,Boundary_mask_uav,'cyan'), 'InitialMagnification',30);
+%%%%%% Aerial Image
+Boundary_mask_aerial = boundarymask(label_aerial);
+imshow(imoverlay(cropped_map,Boundary_mask_aerial,'cyan'), 'InitialMagnification',30);
 
 % Descriptor Extraction
 
