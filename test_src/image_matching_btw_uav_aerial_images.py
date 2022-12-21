@@ -1,7 +1,13 @@
-%% Trial for image matching between aerial image with UAV acquried image.
-close all; clc; clear;
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Dec 21 22:04:39 2022
 
-%% Parameters initialization
+@author: Alien08
+"""
+
+# Trial for image matching between aerial image with UAV acquried image.
+
+# Parameters initialization
 
 % About Map image Loading
 aerial_map_path      = "../../02_map_images/";
