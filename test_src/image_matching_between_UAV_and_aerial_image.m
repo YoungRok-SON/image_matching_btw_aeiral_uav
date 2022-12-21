@@ -60,7 +60,8 @@ uav_img_gray = rgb2gray(uav_img);
 downsampled_uav_img = imresize(uav_img_gray,target_size_uav_img);
 
 % Orientation Matching: 일단 손으로 대강 맞추고 나중에 드론으로 할 때에는 드론 헤딩이랑 같이 쓰지 뭐..
-rotated_img = imrotate(downsampled_uav_img, target_orientation, "bilinear");
+rotated_img = imrotate(downsampled_uav_img, target_orientation,"bicubic");
+
 % imshowpair(rotated_img,map_img_rgb,'montage');
 figure("Name","UAV image");
 imshow(rotated_img);
@@ -100,38 +101,64 @@ elseif(isequal(method_feature_extraction,"SLIC"))
     %%% Calculate Parameter for SLIC of aerial map
     map_size                = size(map_for_matching);
     uav_img_size            = size(rotated_img);
-    num_devided_area_aerial = int16(num_devided_area_uav *  (max(map_size)/max(uav_img_size))) * 1; % SLIC 개수... 어떻게 해야할지 3은 매직넘버
+    num_devided_area_aerial = int16(num_devided_area_uav *  (max(map_size)/max(uav_img_size))) * 2; % SLIC 개수... 어떻게 해야할지 3은 매직넘버
     
     %%% Method 2: Using SLIC point as feature points
-    [label_uav, num_of_label_uav] = superpixels(rotated_img,num_devided_area_uav,'Compactness',1);
-    [label_aerial, num_of_label_aeiral] = superpixels(map_for_matching,num_devided_area_aerial,'Compactness',1);
+    [label_uav,    num_of_label_uav]    = superpixels(rotated_img,num_devided_area_uav,'Compactness',10,"Method","slic","NumIterations",100);
+    [label_aerial, num_of_label_aeiral] = superpixels(map_for_matching,num_devided_area_aerial,'Compactness',10,"Method","slic","NumIterations",100);
     %%%%%% UAV Image
     figure("Name","UAV SLIC Image");
-    Boundary_mask_uav = boundarymask(label_uav);
-    imshow(imoverlay(rotated_img,Boundary_mask_uav,'cyan'), 'InitialMagnification',30);
+    boundary_mask_uav = boundarymask(label_uav);
+    imshow(imoverlay(rotated_img,boundary_mask_uav,'cyan'), 'InitialMagnification',0.1);
     %%%%%% Aerial Image
     figure("Name","Map SLIC Image")
-    Boundary_mask_aerial = boundarymask(label_aerial);
-    imshow(imoverlay(map_for_matching,Boundary_mask_aerial,'cyan'), 'InitialMagnification',30);
+    boundary_mask_aerial = boundarymask(label_aerial);
+    imshow(imoverlay(map_for_matching,boundary_mask_aerial,'cyan'), 'InitialMagnification',0.1);
+    num_feature_point = 0;
+
+    % Count number of boundary pixel with value.
+    reshaped_boundary_mask_uav = reshape(boundary_mask_uav,[],1);
+    reshaped_boundary_mask_aerial = reshape(boundary_mask_aerial,[],1);
+    %%% For UAV images
+    count_features = 1;
+    for num_feature = 1:1:length(reshaped_boundary_mask_uav)
+        if(reshaped_boundary_mask_uav(num_feature) == true )
+            count_features = count_features + 1;
+        end
+    end
+    slic_points_uav = zeros(count_features, 2);
+    %%% For Map images
+    count_features = 1;
+    for num_feature = 1:1:length(reshaped_boundary_mask_aerial)
+        if(reshaped_boundary_mask_aerial(num_feature) == true )
+            count_features = count_features + 1;
+        end
+    end
+    slic_points_aerial = zeros(count_features, 2);
+
     % Extract feature points at the boundary
     cunt_uav = 1;
-    for i = 1:1:uav_img_size(1)
-        for j = 1:1:uav_img_size(2)
-            if(Boundary_mask_uav(i,j) == true && rotated_img(i,j) ~= 0)
+    for i = 11:1:uav_img_size(1)-11
+        for j = 11:1:uav_img_size(2)-11
+            if(boundary_mask_uav(i,j) == true && rotated_img(i,j) ~= 0 && rotated_img(i-10,j) ~= 0 && rotated_img(i+10,j) ~= 0 && rotated_img(i,j-10) ~= 0 && rotated_img(i,j+10) ~= 0)
                 slic_points_uav(cunt_uav, :) = [j i];
                 cunt_uav = cunt_uav+1;
             end
         end
     end
+    slic_points_uav(cunt_uav:end,:) = []; % remove 0 pixels
+
     cunt_aerial = 1;
     for i = 1:1:map_size(1)
         for j = 1:1:map_size(2)
-            if(Boundary_mask_aerial(i,j) == true && map_for_matching(i,j) ~= 0)
+            if(boundary_mask_aerial(i,j) == true && map_for_matching(i,j) ~= 0)
                 slic_points_aerial(cunt_aerial, :) = [j i];
                 cunt_aerial = cunt_aerial+1;
             end
         end
     end
+    slic_points_aerial(cunt_aerial:end,:) = []; % remove 0 pixels
+
     close all;
 
     figure("Name","UAV SLIC Image");
@@ -150,18 +177,32 @@ elseif(isequal(method_feature_extraction,"SLIC"))
 end
 
 % Feature extaction
-[descriptors_uav, feature_points_uav] = extractFeatures(rotated_img,feature_points_uav,"Method","SIFT");
-[descriptors_aerial, feature_points_aerial] = extractFeatures(map_for_matching,feature_points_aerial,"Method","SIFT");
+[descriptors_uav, feature_points_uav] = extractFeatures(rotated_img,feature_points_uav,"Method","SIFT",'Upright',true);
+[descriptors_aerial, feature_points_aerial] = extractFeatures(map_for_matching,feature_points_aerial,"Method","SIFT",'Upright',true);
+% [descriptors_uav, feature_points_uav] = extractFeatures(rotated_img,feature_points_uav,"Method","SIFT");
+% [descriptors_aerial, feature_points_aerial] = extractFeatures(map_for_matching,feature_points_aerial,"Method","SIFT");
 
 
 %% Image Matching
 
 % Find correspondence between I(n-1) and I(n).
-indices_matched = matchFeatures(descriptors_uav, descriptors_aerial, Unique=true);
+% close all;
+figure('Name',"Result of feature point matching"); 
+ax = axes;
+indices_matched = matchFeatures(descriptors_uav, descriptors_aerial,Method="Exhaustive",MatchThreshold=100,Metric="SSD",MaxRatio=1,Unique=false);
+
 % Get matching points
 matched_points_uav = feature_points_uav(indices_matched(:,1),:);
 matched_points_aerial = feature_points_aerial(indices_matched(:,2),:);
-% Estimate the transformation between I(n) and I(n-1).
+
+for i = 1:1:size(indices_matched,1)
+    showMatchedFeatures(rotated_img, map_for_matching, matched_points_uav(i), matched_points_aerial(i),"montage",Parent=ax);
+end
+
+% 
+% showMatchedFeatures(rotated_img, map_for_matching, matched_points_uav, matched_points_aerial,"montage",Parent=ax);
+
+%% Estimate the transformation between I(n) and I(n-1).
 [uav_to_map_tform, inliner_mached_points] = estimateGeometricTransform2D( matched_points_uav, matched_points_aerial, ...
                                         "affine", Confidence=confidenceValue, maxNumTrials=maxNumTrials);
 inlier_points_sensor = matched_points_uav(inliner_mached_points,:);
