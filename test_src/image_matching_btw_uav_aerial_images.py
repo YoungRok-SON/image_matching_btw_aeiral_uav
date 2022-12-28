@@ -58,19 +58,23 @@ target_size_uav_img  = np.int16(np.array([width_image, height_image]) * resize_f
 #%% About Orientation matching
 target_orientation   = 130; # [deg]
 
-#%% About Feature point extraction
-# use_cropped_map           = true; # 안자르고 하려니까 지도 사이즈가 너무 커서 안되겠음 잘라주긴 해야할 듯
-# method_feature_extraction = 'SLIC'; # SIFT
-# num_strong_SIFT_feature_point = 5000;
-# ### SLIC parameter
-# num_devided_area_uav    = 50;
+#%% About Key point extraction using SLIC
 
-# #%% About Feature matching
-# clear troms
-# uav_to_map_tform = affine2d(eye(3));
-# confidenceValue = 99.9;
-# maxNumTrials = 2000;
+# UAV_image
+num_superpixels_uav    = 1000; # Desired number of superpixels
+num_iterations_uav     = 5;   # Number of pixel level iterations. The higher, the better quality
+prior_uav              = 2;   # For shape smoothing term. must be [0, 5]
+num_levels_uav         = 5;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
+num_histogram_bins_uav = 2;   # Number of histogram bins
 
+
+num_superpixels_map    = 1000; # Desired number of superpixels
+num_iterations_map     = 5;   # Number of pixel level iterations. The higher, the better quality
+prior_map              = 5;   # For shape smoothing term. must be [0, 5]
+num_levels_map         = 5;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
+num_histogram_bins_map = 3;   # Number of histogram bins
+
+num_slic_pixel_gap     = 5;
 #%% Load Aerial Map data
 map_img     = cv.imread(aerial_map_path_name,cv.IMREAD_COLOR);
 imgplot_map = plt.imshow(map_img);
@@ -101,41 +105,35 @@ cv.destroyAllWindows()
 
 #%% Image matching using SIFT key points and descriptor
 
-# Initiate SIFT feature detector object.
-sift_detector = cv.SIFT_create();
-# Find the key points and descriptors with SIFT
-key_points_uav,    descriptor_uav    = sift_detector.detectAndCompute(aligned_uav_img,None);
-key_points_aerial, descriptor_aerial = sift_detector.detectAndCompute(map_img,None);
-# Initiate brute-force matching object.
-brute_force_matcher = cv.BFMatcher();
-indices_matched     = brute_force_matcher.knnMatch(descriptor_uav, descriptor_aerial, k=2);
-# Apply ratio test
-good_matches = [];
-for m,n in indices_matched:
-    if m.distance < 0.75 * n.distance:
-        good_matches.append([m]);
-# cv.drawMatchesKnn expects list of lists as matches.
-mated_image = cv.drawMatchesKnn(aligned_uav_img, key_points_uav, map_img, key_points_aerial,good_matches,None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+# # Initiate SIFT feature detector object.
+# sift_detector = cv.SIFT_create();
+# # Find the key points and descriptors with SIFT
+# key_points_uav,    descriptor_uav    = sift_detector.detectAndCompute(aligned_uav_img,None);
+# key_points_aerial, descriptor_map = sift_detector.detectAndCompute(map_img,None);
+# # Initiate brute-force matching object.
+# brute_force_matcher = cv.BFMatcher();
+# indices_matched     = brute_force_matcher.knnMatch(descriptor_uav, descriptor_map, k=2);
+# # Apply ratio test
+# good_matches = [];
+# for m,n in indices_matched:
+#     if m.distance < 0.75 * n.distance:
+#         good_matches.append([m]);
+# # cv.drawMatchesKnn expects list of lists as matches.
+# mated_image = cv.drawMatchesKnn(aligned_uav_img, key_points_uav, map_img, key_points_aerial,good_matches,None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
-cv.imshow('Matched Result',mated_image)
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow('Matched Result',mated_image)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 #%%  Image Matching using SLIC boundary points and SIFT descriptor using SLIC of OPENCV ---> UAV
 
 # Convert color space
 converted_uav_img = cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2HSV);
-
-num_superpixels    = 1000; # Desired number of superpixels
-num_iterations     = 5;   # Number of pixel level iterations. The higher, the better quality
-prior              = 2;   # For shape smoothing term. must be [0, 5]
-num_levels         = 5;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
-num_histogram_bins = 2;   # Number of histogram bins
-height, width, channels = aligned_uav_img.shape;
-
+# Get infomation of converted Image
+height_uav, width_uav, channels_uav = converted_uav_img.shape;
 # Initialize SEEDS Algorithm
-seeds = cv.ximgproc.createSuperpixelSEEDS(width,height,channels,num_superpixels,num_levels,prior,num_histogram_bins);
+seeds = cv.ximgproc.createSuperpixelSEEDS(width_uav, height_uav, channels_uav, num_superpixels_uav, num_levels_uav, prior_uav, num_histogram_bins_uav);
 # Run SEEDS
-seeds.iterate(aligned_uav_img, num_iterations);
+seeds.iterate(aligned_uav_img, num_iterations_uav);
 # Get number of superpixel
 num_of_superpixels_result = seeds.getNumberOfSuperpixels()
 print('Final number of superpixels: %d' % num_of_superpixels_result)
@@ -146,51 +144,52 @@ labels = seeds.getLabels() # height x width matrix. Each component indicates the
 # draw contour
 label_mask = seeds.getLabelContourMask(False)
 croped_label_mask = cv.bitwise_and(label_mask,label_mask,mask=cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY))
-tmp_aligned_uav_img = aligned_uav_img;
+tmp_aligned_uav_img = aligned_uav_img.copy();
 
 # Draw color coded image
-color_img = np.zeros((height, width, 3), np.uint8)
+color_img = np.zeros((height_uav, width_uav, 3), np.uint8)
 color_img[:] = (0, 0, 255)
 mask_inv = cv.bitwise_not(np.int8(croped_label_mask))
 result_bg = cv.bitwise_and(tmp_aligned_uav_img, tmp_aligned_uav_img, mask=mask_inv)
 result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask))
 result = cv.add(result_bg, result_fg)
-cv.imshow('ColorCodedWindow', result)
+cv.imshow('SLIC Key points of UAV Image', result)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
-
+# Conver to Grayscale Image for remove useless SLIC point on image boudary.
+aligned_uav_img_gray = cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY)
 # Extract key points from slic boundary points. 
 key_point_pixel_list_uav = [];
-for row in range(height):
-    for col in range(width):
-        if croped_label_mask[row,col] != 0:
+for row in range(num_slic_pixel_gap, height_uav-num_slic_pixel_gap):
+    for col in range(num_slic_pixel_gap, width_uav-num_slic_pixel_gap):
+        if (croped_label_mask[row,col]       != 0                   and
+            aligned_uav_img_gray[row + num_slic_pixel_gap,col ]   != 0 and 
+            aligned_uav_img_gray[row - num_slic_pixel_gap,col ]   != 0 and
+            aligned_uav_img_gray[row, col - num_slic_pixel_gap]   != 0 and
+            aligned_uav_img_gray[row ,col + num_slic_pixel_gap]   != 0   ):
             key_point_pixel_list_uav.append([row, col]);
 
 # Generate Keypoint object list from pixel value.
-key_point_list = [];
+key_point_list_uav = [];
 for i in range(len(key_point_pixel_list_uav)):
-    key_point_list.append(cv.KeyPoint(x=key_point_pixel_list_uav[i][0],y=key_point_pixel_list_uav[i][1], size=1))            
+    key_point_list_uav.append(cv.KeyPoint(x=key_point_pixel_list_uav[i][1],y=key_point_pixel_list_uav[i][0], size=1))            
             
 # Compute descriptor vector from key points.
-sift_detector = cv.SIFT_create();
-key_points_uav, descriptor_uav = sift_detector.compute(aligned_uav_img,key_point_list,None)
+sift_detector_uav = cv.SIFT_create();
+key_points_uav, descriptor_uav = sift_detector_uav.compute(aligned_uav_img,key_point_list_uav,None)
 
 #%%  Image Matching using SLIC boundary points and SIFT descriptor using SLIC of OPENCV ---> Map
 
+# Convert Image from BGR to RGB
 converted_map_img = cv.cvtColor(map_img, cv.COLOR_BGR2HSV);
-
-num_superpixels    = 1000; # Desired number of superpixels
-num_iterations     = 5;   # Number of pixel level iterations. The higher, the better quality
-prior              = 5;   # For shape smoothing term. must be [0, 5]
-num_levels         = 5;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
-num_histogram_bins = 3;   # Number of histogram bins
-height, width, channels = converted_map_img.shape;
+# Get information of map image
+height_map, width_map, channels_map = converted_map_img.shape;
 
 # Initialize SEEDS Algorithm
-seeds = cv.ximgproc.createSuperpixelSEEDS(width,height,channels,num_superpixels,num_levels,prior,num_histogram_bins);
+seeds = cv.ximgproc.createSuperpixelSEEDS(width_map, height_map, channels_map, num_superpixels_map, num_levels_map,  prior_map, num_histogram_bins_map);
 # Run SEEDS
-seeds.iterate(converted_map_img, num_iterations);
+seeds.iterate(converted_map_img, num_iterations_map);
 # Get number of superpixel
 num_of_superpixels_result = seeds.getNumberOfSuperpixels()
 print('Final number of superpixels: %d' % num_of_superpixels_result)
@@ -203,43 +202,49 @@ croped_label_mask = cv.bitwise_and(label_mask,label_mask,mask=cv.cvtColor(map_im
 tmp_map_img = map_img;
 
 # Draw color coded image
-color_img = np.zeros((height, width, 3), np.uint8)
+color_img = np.zeros((height_map, width_map, 3), np.uint8)
 color_img[:] = (0, 0, 255)
 mask_inv = cv.bitwise_not(np.int8(croped_label_mask))
 result_bg = cv.bitwise_and(tmp_map_img, tmp_map_img, mask=mask_inv)
 result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask))
 result = cv.add(result_bg, result_fg)
-cv.imshow('ColorCodedWindow', result)
+cv.imshow('SLIC Key points of Map Image', result)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
+# Conver to Grayscale Image for remove useless SLIC point on image boudary.
+map_img_gray = cv.cvtColor(map_img, cv.COLOR_BGR2GRAY)
 # Extract key points from slic boundary points. 
-key_point_pixel_list_aerial = [];
-for x in range(height):
-    for y in range(width):
-        if croped_label_mask[x,y] != 0:
-            key_point_pixel_list_aerial.append([x,y]);
+key_point_pixel_list_map = [];
+for row in range(num_slic_pixel_gap, height_uav-num_slic_pixel_gap):
+    for col in range(num_slic_pixel_gap, width_uav-num_slic_pixel_gap):
+        if (croped_label_mask[row,col]       != 0 and
+            map_img_gray[row + num_slic_pixel_gap,col ]   != 0 and 
+            map_img_gray[row - num_slic_pixel_gap,col ]   != 0 and
+            map_img_gray[row, col - num_slic_pixel_gap]   != 0 and
+            map_img_gray[row ,col + num_slic_pixel_gap]   != 0   ):
+            key_point_pixel_list_map.append([row, col]);
 
 # Generate Keypoint object list from pixel value.
-key_point_list = [];
-for i in range(len(key_point_pixel_list_aerial)):
-    key_point_list.append(cv.KeyPoint(x=key_point_pixel_list_aerial[i][0],y=key_point_pixel_list_aerial[i][1], size=1))            
+key_point_list_map = [];
+for i in range(len(key_point_pixel_list_map)):
+    key_point_list_map.append(cv.KeyPoint(x=key_point_pixel_list_map[i][1], y=key_point_pixel_list_map[i][0], size=1))            
             
 # Compute descriptor vector from key points.
-sift_detector = cv.SIFT_create();
-key_points_aerial, descriptor_aerial = sift_detector.compute(map_img,key_point_list,None)
+sift_detector_map = cv.SIFT_create();
+key_points_map, descriptor_map = sift_detector_map.compute(aligned_uav_img,key_point_list_map,None)
 
 #%% Feature matching using Brute-force 
 
 # Initiate brute-force matching object.
-brute_force_matcher = cv.BFMatcher();
-indices_matched     = brute_force_matcher.knnMatch(descriptor_uav, descriptor_aerial,k=2);
-# Apply ratio test
-good_matches = [];
-for m,n in indices_matched:
-    if m.distance < 0.75 * n.distance:
-        good_matches.append([m]);
-# cv.drawMatchesKnn expects list of lists as matches.
+# brute_force_matcher = cv.BFMatcher();
+# indices_matched     = brute_force_matcher.knnMatch(descriptor_uav, descriptor_map,k=2);
+# # Apply ratio test
+# good_matches = [];
+# for m,n in indices_matched:
+#     if m.distance < 0.75 * n.distance:
+#         good_matches.append([m]);
+# # cv.drawMatchesKnn expects list of lists as matches.
 # for i in range(int((len(good_matches)-1)/20)):
 #     mated_image = cv.drawMatchesKnn(aligned_uav_img, key_points_uav, map_img, key_points_aerial,good_matches[i*20:(i+1)*20],None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 #     cv.imshow('Matched Result',mated_image)
@@ -248,45 +253,45 @@ for m,n in indices_matched:
     
 
 
-#%%
+#%% Check Specific one feature point among SLIC key points.
+idx_key_points = 1
+key_point_aligned_uav = aligned_uav_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
+cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[idx_key_points][1],key_point_pixel_list_uav[idx_key_points][0]), 5, (0,0,255))
 
-# To do 
-# 한 피쳐당 100개까지 매칭 결과 뽑아보기
-# 뽑은 결과에 대해서 히스토그램 그려보기
-# 몰리는 부분 찾아보기
-idx_key_points = 2
-key_point_pixel_list_uav[idx_key_points]
-key_point_aligned_uav = aligned_uav_img;
-cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[idx_key_points][0],key_point_pixel_list_uav[idx_key_points][1]), 10, (0,0,255))
-
-cv.imshow('Aligned UAV Image', key_point_aligned_uav);
+cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
 cv.waitKey(0)
 cv.destroyAllWindows()    
 
-# 유클리디언 
-a = descriptor_uav[100];
-dist = [];
-for i in range(len(descriptor_aerial)):
-    b = descriptor_aerial[i];
-    dist.append((i,np.linalg.norm(a-b)))
+#%% Calculate Euclidean distance between two SLIC key point sets.
 
+queried_descriptor_vector_uav = descriptor_uav[idx_key_points];
+distance_btw_vectors = [];
+# Calcualte distance btw two descriptor sets.
+for i in range(len(descriptor_map)):
+    queried_descriptor_vector = descriptor_map[i];
+    distance_btw_vectors.append((i,np.linalg.norm(queried_descriptor_vector_uav-queried_descriptor_vector)))
+#  sort by distance with index.
+distance_btw_vectors.sort(key=lambda x:x[1]);
 
-dist.sort(key=lambda x:x[1]);
-
+# Show the best 100 matches
+for i in range(100):
+    pair_index = distance_btw_vectors[i][0];
+    cv.circle()
+    
 
 #%% Generate histogram of matched point.
 col_pixel_matched_in_aeiral = [];
 row_pixel_matched_in_aeiral = [];
 for i in range(100):
-    col,row = key_point_pixel_list_aerial[dist[i][0]];
+    col,row = key_point_pixel_list_map[dist[i][0]];
     col_pixel_matched_in_aeiral.append(col);
     row_pixel_matched_in_aeiral.append(row);
-plt.hist(x_pixel_matched_in_aeiral)
-plt.hist(y_pixel_matched_in_aeiral)
+plt.hist(row_pixel_matched_in_aeiral)
+plt.hist(col_pixel_matched_in_aeiral)
 
 # 그리 그리기
 for i in range(100):
-    cv.circle(map_img,(y_pixel_matched_in_aeiral[i],x_pixel_matched_in_aeiral[i]), 10, (0,0,255))
+    cv.circle(map_img,(row_pixel_matched_in_aeiral[i],col_pixel_matched_in_aeiral[i]), 10, (0,0,255))
 cv.imshow("Map features", map_img)
 cv.waitKey()
 cv.destroyAllWindows()
@@ -317,125 +322,4 @@ cv.waitKey(0)
 cv.destroyAllWindows()
 
 
-#%%
-elseif(isequal(method_feature_extraction,"SLIC"))
-    ### Calculate Parameter for SLIC of aerial map
-    map_size                = size(map_for_matching);
-    uav_img_size            = size(aligned_uav_img);
-    num_devided_area_aerial = int16(num_devided_area_uav *  (max(map_size)/max(uav_img_size))) * 2; # SLIC 개수... 어떻게 해야할지 3은 매직넘버
-    
-    ### Method 2: Using SLIC point as feature points
-    [label_uav,    num_of_label_uav]    = superpixels(aligned_uav_img,num_devided_area_uav,'Compactness',10,"Method","slic","NumIterations",100);
-    [label_aerial, num_of_label_aeiral] = superpixels(map_for_matching,num_devided_area_aerial,'Compactness',10,"Method","slic","NumIterations",100);
-    ###### UAV Image
-    figure("Name","UAV SLIC Image");
-    boundary_mask_uav = boundarymask(label_uav);
-    imshow(imoverlay(aligned_uav_img,boundary_mask_uav,'cyan'), 'InitialMagnification',0.1);
-    ###### Aerial Image
-    figure("Name","Map SLIC Image")
-    boundary_mask_aerial = boundarymask(label_aerial);
-    imshow(imoverlay(map_for_matching,boundary_mask_aerial,'cyan'), 'InitialMagnification',0.1);
-    num_feature_point = 0;
 
-    # Count number of boundary pixel with value.
-    reshaped_boundary_mask_uav = reshape(boundary_mask_uav,[],1);
-    reshaped_boundary_mask_aerial = reshape(boundary_mask_aerial,[],1);
-    ### For UAV images
-    count_features = 1;
-    for num_feature = 1:1:length(reshaped_boundary_mask_uav)
-        if(reshaped_boundary_mask_uav(num_feature) == true )
-            count_features = count_features + 1;
-        end
-    end
-    slic_points_uav = zeros(count_features, 2);
-    ### For Map images
-    count_features = 1;
-    for num_feature = 1:1:length(reshaped_boundary_mask_aerial)
-        if(reshaped_boundary_mask_aerial(num_feature) == true )
-            count_features = count_features + 1;
-        end
-    end
-    slic_points_aerial = zeros(count_features, 2);
-
-    # Extract feature points at the boundary
-    cunt_uav = 1;
-    for i = 11:1:uav_img_size(1)-11
-        for j = 11:1:uav_img_size(2)-11
-            if(boundary_mask_uav(i,j) == true && aligned_uav_img(i,j) ~= 0 && aligned_uav_img(i-10,j) ~= 0 && aligned_uav_img(i+10,j) ~= 0 && aligned_uav_img(i,j-10) ~= 0 && aligned_uav_img(i,j+10) ~= 0)
-                slic_points_uav(cunt_uav, :) = [j i];
-                cunt_uav = cunt_uav+1;
-            end
-        end
-    end
-    slic_points_uav(cunt_uav:end,:) = []; # remove 0 pixels
-
-    cunt_aerial = 1;
-    for i = 1:1:map_size(1)
-        for j = 1:1:map_size(2)
-            if(boundary_mask_aerial(i,j) == true && map_for_matching(i,j) ~= 0)
-                slic_points_aerial(cunt_aerial, :) = [j i];
-                cunt_aerial = cunt_aerial+1;
-            end
-        end
-    end
-    slic_points_aerial(cunt_aerial:end,:) = []; # remove 0 pixels
-
-    close all;
-
-    figure("Name","UAV SLIC Image");
-    imshow(aligned_uav_img);
-    hold on
-    plot(slic_points_uav(:,1), slic_points_uav(:,2),'Marker','+','MarkerSize',5,'LineStyle','none','Color','r');
-
-    figure("Name","Map SLIC Image");
-    imshow(map_for_matching);
-    hold on
-    plot(slic_points_aerial(:,1), slic_points_aerial(:,2),'Marker','+','MarkerSize',5,'LineStyle','none','Color','r');
-    
-    # Descriptor Extraction
-    feature_points_uav = SIFTPoints(slic_points_uav);
-    feature_points_aerial = SIFTPoints(slic_points_aerial);
-end
-
-#%% Feature extaction
-[descriptors_uav, feature_points_uav]       = extractFeatures(aligned_uav_img,feature_points_uav,"Method","SIFT",'Upright',true);
-[descriptors_aerial, feature_points_aerial] = extractFeatures(map_for_matching,feature_points_aerial,"Method","SIFT",'Upright',true);
-# [descriptors_uav, feature_points_uav] = extractFeatures(aligned_uav_img,feature_points_uav,"Method","SIFT");
-# [descriptors_aerial, feature_points_aerial] = extractFeatures(map_for_matching,feature_points_aerial,"Method","SIFT");
-# [descriptors_uav, feature_points_uav] = extractFeatures(aligned_uav_img,feature_points_uav,"Method","SURF");
-# [descriptors_aerial, feature_points_aerial] = extractFeatures(map_for_matching,feature_points_aerial,"Method","SURF");
-
-## Image Matching
-
-# Find correspondence between I(n-1) and I(n).
-# close all;
-figure('Name',"Result of feature point matching"); 
-ax = axes;
-
-indices_matched      = matchFeatures( descriptors_uav,descriptors_aerial,Method="Approximate",Unique=false,MatchThreshold=100,MaxRatio=1);
-## Feature Matching using K-means
-
-
-# Get matching points
-matched_points_uav = feature_points_uav(indices_matched(:,1),:);
-matched_points_aerial = feature_points_aerial(indices_matched(:,2),:);
-
-for i = 1:1:size(indices_matched,1)
-    showMatchedFeatures(aligned_uav_img, map_for_matching, matched_points_uav(1:100), matched_points_aerial(1:100),"montage",Parent=ax);
-end
-
-# 
-# showMatchedFeatures(aligned_uav_img, map_for_matching, matched_points_uav, matched_points_aerial,"montage",Parent=ax);
-
-## Estimate the transformation between I(n) and I(n-1).
-[uav_to_map_tform, inliner_mached_points] = estimateGeometricTransform2D( matched_points_uav, matched_points_aerial, ...
-                                        "affine", Confidence=confidenceValue, maxNumTrials=maxNumTrials);
-inlier_points_sensor = matched_points_uav(inliner_mached_points,:);
-inlider_points_map = matched_points_aerial(inliner_mached_points,:);
-figure('Name',"Result of feature point matching"); 
-ax = axes;
-showMatchedFeatures(aligned_uav_img, map_for_matching, matched_points_uav, matched_points_aerial,"montag",Parent=ax);
-# showMatchedFeatures(aligned_uav_img, map_for_matching, inlier_points_sensor, inlider_points_map,"montag",Parent=ax);
-
-title(ax,"Candidate point matches");
-legend(ax,"Matched points 1","Matched points 2");
