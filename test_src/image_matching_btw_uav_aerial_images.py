@@ -52,29 +52,9 @@ height_image         = uav_img.image_height;       # [px]
 width_ccd_sensor     = 6.4/10;                     # [mm to cm] width of ccd sensor: check spec of camera.
 gsd_uav_img          = altitude_uav*width_ccd_sensor/(focal_length*width_image); # [cm]
 gsd_aerial_map       = 25;                         # [cm] ground sampling distance: Check the information from the institude of aerial image.
-resize_factor        = gsd_uav_img/gsd_aerial_map; # resize factor to match gsd of two image
+resize_factor        = 0.19gsd_uav_img/gsd_aerial_map; # resize factor to match gsd of two image
 target_size_uav_img  = np.int16(np.array([width_image, height_image]) * resize_factor);
 
-#%% About Orientation matching
-target_orientation   = 130; # [deg]
-
-#%% About Key point extraction using SLIC
-
-# UAV_image
-num_superpixels_uav    = 1000; # Desired number of superpixels
-num_iterations_uav     = 5;   # Number of pixel level iterations. The higher, the better quality
-prior_uav              = 2;   # For shape smoothing term. must be [0, 5]
-num_levels_uav         = 5;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
-num_histogram_bins_uav = 2;   # Number of histogram bins
-
-
-num_superpixels_map    = 1000; # Desired number of superpixels
-num_iterations_map     = 5;   # Number of pixel level iterations. The higher, the better quality
-prior_map              = 5;   # For shape smoothing term. must be [0, 5]
-num_levels_map         = 5;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
-num_histogram_bins_map = 3;   # Number of histogram bins
-
-num_slic_pixel_gap     = 5;
 #%% Load Aerial Map data
 map_img     = cv.imread(aerial_map_path_name,cv.IMREAD_COLOR);
 imgplot_map = plt.imshow(map_img);
@@ -89,20 +69,38 @@ cv.waitKey(0)
 cv.destroyAllWindows()
 #%% Image preprocessing
 
+
 # Image Resize
-downsampled_uav_img = cv.resize(uav_img,target_size_uav_img);
+downsampled_uav_img = cv.resize(uav_img,target_size_uav_img,interpolation=cv.INTER_AREA);
 imgplot_uav_downsampled = plt.imshow(downsampled_uav_img);
 cv.imshow('Downsampled UAV Image', downsampled_uav_img);
 cv.waitKey(0)
 cv.destroyAllWindows()
 # Orientation Matching: 일단 손으로 대강 맞추고 나중에 드론으로 할 때에는 드론 헤딩이랑 같이 쓰지 뭐..
+# About Orientation matching
+target_orientation   = 130; # [deg]
 aligned_uav_img = imutils.rotate_bound(downsampled_uav_img, target_orientation);
 imgplot_uav_aligned = plt.imshow(aligned_uav_img);
 cv.imshow('Aligned UAV Image', aligned_uav_img);
 cv.waitKey(0)
 cv.destroyAllWindows()
 
+# Image Crop for feature matching debuging
+# aligned_uav_img = aligned_uav_img[250:500, 200:500];
+cropped_map_img         = map_img[250:550, 200:550];
+cropped_aligned_uav_img = aligned_uav_img[180:700, 200:700];
 
+cv.imshow('Cropped Map Image', cropped_map_img);
+cv.imshow('Cropped Aligned UAV Image', cropped_aligned_uav_img);
+cv.waitKey(0)
+cv.destroyAllWindows()
+#%% Apply Crop
+map_img         = cropped_map_img;
+aligned_uav_img = cropped_aligned_uav_img;
+cv.imshow('Cropped Map Image', cropped_map_img);
+cv.imshow('Cropped Aligned UAV Image', cropped_aligned_uav_img);
+cv.waitKey(0)
+cv.destroyAllWindows()
 #%% Image matching using SIFT key points and descriptor
 
 # # Initiate SIFT feature detector object.
@@ -124,16 +122,27 @@ cv.destroyAllWindows()
 # cv.imshow('Matched Result',mated_image)
 # cv.waitKey(0)
 # cv.destroyAllWindows()
-#%%  Image Matching using SLIC boundary points and SIFT descriptor using SLIC of OPENCV ---> UAV
+
+#%% About Key point extraction using SLIC - UAV
+
+num_superpixels_uav    = 500; # Desired number of superpixels
+num_iterations_uav     = 20;   # Number of pixel level iterations. The higher, the better quality
+prior_uav              = 1;   # For shape smoothing term. must be [0, 5]
+num_levels_uav         = 3;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
+num_histogram_bins_uav = 10;   # Number of histogram bins
+
+num_slic_pixel_gap_uav     = 5;
+
+# Image Matching using SLIC boundary points and SIFT descriptor using SLIC of OPENCV ---> UAV
 
 # Convert color space
 converted_uav_img = cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2HSV);
 # Get infomation of converted Image
-height_uav, width_uav, channels_uav = converted_uav_img.shape;
+height_uav, width_uav,channels_uav = converted_uav_img.shape;
 # Initialize SEEDS Algorithm
 seeds = cv.ximgproc.createSuperpixelSEEDS(width_uav, height_uav, channels_uav, num_superpixels_uav, num_levels_uav, prior_uav, num_histogram_bins_uav);
 # Run SEEDS
-seeds.iterate(aligned_uav_img, num_iterations_uav);
+seeds.iterate(converted_uav_img, num_iterations_uav);
 # Get number of superpixel
 num_of_superpixels_result = seeds.getNumberOfSuperpixels()
 print('Final number of superpixels: %d' % num_of_superpixels_result)
@@ -178,8 +187,15 @@ for i in range(len(key_point_pixel_list_uav)):
 # Compute descriptor vector from key points.
 sift_detector_uav = cv.SIFT_create();
 key_points_uav, descriptor_uav = sift_detector_uav.compute(aligned_uav_img,key_point_list_uav,None)
+#%% About Key point extraction using SLIC -Map
+num_superpixels_map        = 500; # Desired number of superpixels
+num_iterations_map         = 20;   # Number of pixel level iterations. The higher, the better quality
+prior_map                  = 1;   # For shape smoothing term. must be [0, 5]
+num_levels_map             = 3;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
+num_histogram_bins_map     = 10;   # Number of histogram bins
+num_slic_pixel_gap_map     = 5;
 
-#%%  Image Matching using SLIC boundary points and SIFT descriptor using SLIC of OPENCV ---> Map
+# Image Matching using SLIC boundary points and SIFT descriptor using SLIC of OPENCV ---> Map
 
 # Convert Image from BGR to RGB
 converted_map_img = cv.cvtColor(map_img, cv.COLOR_BGR2HSV);
@@ -216,13 +232,13 @@ cv.destroyAllWindows()
 map_img_gray = cv.cvtColor(map_img, cv.COLOR_BGR2GRAY)
 # Extract key points from slic boundary points. 
 key_point_pixel_list_map = [];
-for row in range(num_slic_pixel_gap, height_uav-num_slic_pixel_gap):
-    for col in range(num_slic_pixel_gap, width_uav-num_slic_pixel_gap):
-        if (croped_label_mask[row,col]       != 0 and
-            map_img_gray[row + num_slic_pixel_gap,col ]   != 0 and 
-            map_img_gray[row - num_slic_pixel_gap,col ]   != 0 and
-            map_img_gray[row, col - num_slic_pixel_gap]   != 0 and
-            map_img_gray[row ,col + num_slic_pixel_gap]   != 0   ):
+for row in range(num_slic_pixel_gap_map, height_map-num_slic_pixel_gap_map):
+    for col in range(num_slic_pixel_gap_map, width_map-num_slic_pixel_gap_map):
+        if (croped_label_mask[row,col]                        != 0 and
+            map_img_gray[row + num_slic_pixel_gap_map,col ]   != 0 and 
+            map_img_gray[row - num_slic_pixel_gap_map,col ]   != 0 and
+            map_img_gray[row, col - num_slic_pixel_gap_map]   != 0 and
+            map_img_gray[row ,col + num_slic_pixel_gap_map]   != 0   ):
             key_point_pixel_list_map.append([row, col]);
 
 # Generate Keypoint object list from pixel value.
@@ -232,7 +248,7 @@ for i in range(len(key_point_pixel_list_map)):
             
 # Compute descriptor vector from key points.
 sift_detector_map = cv.SIFT_create();
-key_points_map, descriptor_map = sift_detector_map.compute(aligned_uav_img,key_point_list_map,None)
+key_points_map, descriptor_map = sift_detector_map.compute(map_img,key_point_list_map,None)
 
 #%% Feature matching using Brute-force 
 
@@ -253,8 +269,8 @@ key_points_map, descriptor_map = sift_detector_map.compute(aligned_uav_img,key_p
     
 
 
-#%% Check Specific one feature point among SLIC key points.
-idx_key_points = 1
+# Check Specific one feature point among SLIC key points.
+idx_key_points = 100
 key_point_aligned_uav = aligned_uav_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
 cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[idx_key_points][1],key_point_pixel_list_uav[idx_key_points][0]), 5, (0,0,255))
 
@@ -268,58 +284,32 @@ queried_descriptor_vector_uav = descriptor_uav[idx_key_points];
 distance_btw_vectors = [];
 # Calcualte distance btw two descriptor sets.
 for i in range(len(descriptor_map)):
-    queried_descriptor_vector = descriptor_map[i];
-    distance_btw_vectors.append((i,np.linalg.norm(queried_descriptor_vector_uav-queried_descriptor_vector)))
+    queried_descriptor_vector_map = descriptor_map[i];
+    distance_btw_vectors.append( (i, np.linalg.norm(queried_descriptor_vector_uav-queried_descriptor_vector_map) ) )
 #  sort by distance with index.
 distance_btw_vectors.sort(key=lambda x:x[1]);
-
 # Show the best 100 matches
-for i in range(100):
+tmp_map_image = map_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
+num_closest_descriptors = 500;
+for i in range(num_closest_descriptors):
     pair_index = distance_btw_vectors[i][0];
-    cv.circle()
-    
+    cv.circle(tmp_map_image,(key_point_pixel_list_map[pair_index][1], key_point_pixel_list_map[pair_index][0]), 3, (0,255,255),-1)
+
+cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
+cv.imshow('Top 100 matches between UAV and Map', tmp_map_image);
+cv.waitKey(0)
+cv.destroyAllWindows()    
 
 #%% Generate histogram of matched point.
-col_pixel_matched_in_aeiral = [];
-row_pixel_matched_in_aeiral = [];
-for i in range(100):
-    col,row = key_point_pixel_list_map[dist[i][0]];
-    col_pixel_matched_in_aeiral.append(col);
-    row_pixel_matched_in_aeiral.append(row);
-plt.hist(row_pixel_matched_in_aeiral)
-plt.hist(col_pixel_matched_in_aeiral)
+col_pixel_matched_in_map = [];
+row_pixel_matched_in_map = [];
+for i in range(num_closest_descriptors):
+    row,col = key_point_pixel_list_map[distance_btw_vectors[i][0]];
+    col_pixel_matched_in_map.append(col);
+    row_pixel_matched_in_map.append(row);
 
-# 그리 그리기
-for i in range(100):
-    cv.circle(map_img,(row_pixel_matched_in_aeiral[i],col_pixel_matched_in_aeiral[i]), 10, (0,0,255))
-cv.imshow("Map features", map_img)
-cv.waitKey()
-cv.destroyAllWindows()
-
-x,y = key_point_pixel_list_uav[100];
-cv.circle(aligned_uav_img,(y, x), 10, (255,0,0))
-cv.imshow("UAV features", aligned_uav_img)
-cv.waitKey()
-cv.destroyAllWindows()
-#%% Apply SLIC and extract segmented labels using SLIC of skimage
-segmented_label = slic(aligned_uav_img,n_segments=250,compactness=10,sigma=1);
-
-figure_slic = plt.figure("superpixels -- %d segments"%(250));
-ax_slic     = figure_slic.add_subplot(1,1,1);
-cv.imshow('MaskWindow', mark_boundaries(aligned_uav_img, segmented_label, color=(1,1,1), outline_color=(1,1,1)))
-cv.waitKey(0)
-cv.destroyAllWindows()
-
-tmp1 = aligned_uav_img;
-color_img = np.zeros((height, width, 3), np.uint8)
-color_img[:] = (0, 0, 255)
-mask_inv = cv.bitwise_not(segmented_label)
-result_bg = cv.bitwise_and(tmp1, tmp1, mask=mask_inv)
-result_fg = cv.bitwise_and(color_img, color_img, mask=segmented_label)
-result = cv.add(result_bg, result_fg)
-cv.imshow('ColorCodedWindow', result)
-cv.waitKey(0)
-cv.destroyAllWindows()
-
-
+plt.hist(row_pixel_matched_in_map,30)
+plt.grid(True)
+plt.hist(col_pixel_matched_in_map,30)
+plt.grid(True)
 
