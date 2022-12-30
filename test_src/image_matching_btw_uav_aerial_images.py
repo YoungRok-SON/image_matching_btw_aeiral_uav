@@ -69,8 +69,6 @@ cv.imshow('UAV Image', uav_img);
 cv.waitKey(0)
 cv.destroyAllWindows()
 #%% Image preprocessing
-
-
 # Image Resize
 downsampled_uav_img = cv.resize(uav_img,target_size_uav_img,interpolation=cv.INTER_AREA);
 imgplot_uav_downsampled = plt.imshow(downsampled_uav_img);
@@ -85,45 +83,6 @@ imgplot_uav_aligned = plt.imshow(aligned_uav_img);
 cv.imshow('Aligned UAV Image', aligned_uav_img);
 cv.waitKey(0)
 cv.destroyAllWindows()
-
-# Image Crop for feature matching debuging
-# cropped_aligned_uav_img = aligned_uav_img[300:700, 300:700];
-# cropped_aligned_uav_img = aligned_uav_img[250:500, 200:500]; # without magic factor
-# cropped_map_img         = map_img[250:550, 200:550];
-# cropped_aligned_uav_img = aligned_uav_img[180:700, 200:700]; # resize factor 1.9
-
-cv.imshow('Cropped Map Image', map_img);
-cv.imshow('Cropped Aligned UAV Image', aligned_uav_img);
-cv.waitKey(0)
-cv.destroyAllWindows()
-#%% Apply Crop
-map_img         = cropped_map_img;
-aligned_uav_img = cropped_aligned_uav_img;
-cv.imshow('Cropped Map Image', cropped_map_img);
-cv.imshow('Cropped Aligned UAV Image', cropped_aligned_uav_img);
-cv.waitKey(0)
-cv.destroyAllWindows()
-#%% Image matching using SIFT key points and descriptor
-
-# # Initiate SIFT feature detector object.
-# sift_detector = cv.SIFT_create();
-# # Find the key points and descriptors with SIFT
-# key_points_uav,    descriptor_uav    = sift_detector.detectAndCompute(aligned_uav_img,None);
-# key_points_aerial, descriptor_map = sift_detector.detectAndCompute(map_img,None);
-# # Initiate brute-force matching object.
-# brute_force_matcher = cv.BFMatcher();
-# indices_matched     = brute_force_matcher.knnMatch(descriptor_uav, descriptor_map, k=2);
-# # Apply ratio test
-# good_matches = [];
-# for m,n in indices_matched:
-#     if m.distance < 0.75 * n.distance:
-#         good_matches.append([m]);
-# # cv.drawMatchesKnn expects list of lists as matches.
-# mated_image = cv.drawMatchesKnn(aligned_uav_img, key_points_uav, map_img, key_points_aerial,good_matches,None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-# cv.imshow('Matched Result',mated_image)
-# cv.waitKey(0)
-# cv.destroyAllWindows()
 
 #%% About Key point extraction using SLIC - UAV
 
@@ -245,74 +204,19 @@ for row in range(num_slic_pixel_gap_map, height_map-num_slic_pixel_gap_map):
 
 # Generate Keypoint object list from pixel value.
 key_point_list_map = [];
-for i in range(len(key_point_pixel_list_map)):
+for i in range(len(key_point_pixel_list_map)): # 시각화용 match object 생성해야함
     key_point_list_map.append(cv.KeyPoint(x=key_point_pixel_list_map[i][1], y=key_point_pixel_list_map[i][0], size=1,angle=0))            
             
 # Compute descriptor vector from key points.
 sift_detector_map = cv.SIFT_create();
 key_points_map, descriptor_map = sift_detector_map.compute(map_img,key_point_list_map,None)
 
-#%% Feature matching using Brute-force 
-
-# Initiate brute-force matching object.
-# brute_force_matcher = cv.BFMatcher();
-# indices_matched     = brute_force_matcher.knnMatch(descriptor_uav, descriptor_map,k=2);
-# # Apply ratio test
-# good_matches = [];
-# for m,n in indices_matched:
-#     if m.distance < 0.75 * n.distance:
-#         good_matches.append([m]);
-# # cv.drawMatchesKnn expects list of lists as matches.
-# for i in range(int((len(good_matches)-1)/20)):
-#     mated_image = cv.drawMatchesKnn(aligned_uav_img, key_points_uav, map_img, key_points_aerial,good_matches[i*20:(i+1)*20],None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-#     cv.imshow('Matched Result',mated_image)
-#     cv.waitKey(0)
-#     cv.destroyAllWindows()
 #%% Check Specific one feature point among SLIC key points.
 list_delta_pixel_x = [0 for i in range(len(descriptor_uav)*100)];
 list_delta_pixel_y = [0 for i in range(len(descriptor_uav)*100)];
 num_closest_descriptors = 100;
-num_pixel_in_bin = 1
-number_of_bin_y = int(height_map/num_pixel_in_bin)
-number_of_bin_x = int(width_map/num_pixel_in_bin)
 pixel_boundary_radius = 50; # find near pixels within this boudnary.
 
-# for iter_uav in range(len(descriptor_uav)):
-#     print(iter_uav)
-#     idx_key_points = iter_uav
-#     # key_point_aligned_uav = aligned_uav_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-#     # cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[idx_key_points][1],key_point_pixel_list_uav[idx_key_points][0]), 5, (0,0,255))
-
-#     # Calculate Euclidean distance between two SLIC key point sets.
-
-#     queried_descriptor_vector_uav = descriptor_uav[idx_key_points];
-#     distance_btw_vectors = [[0,0] for i in range(len(descriptor_map))];
-#     # Calcualte distance btw two descriptor sets.
-#     for i in range(len(descriptor_map)):
-#         queried_descriptor_vector_map = descriptor_map[i];
-#         # distance_btw_vectors.append( (i, np.linalg.norm(queried_descriptor_vector_uav-queried_descriptor_vector_map) ) )
-#         distance_btw_vectors = [i, np.sum(np.power(queried_descriptor_vector_uav-queried_descriptor_vector_map,2))]
-#     #  sort by distance with index.
-#     distance_btw_vectors.sort(key=lambda x:x[1]);
-#     # Show the best 100 matches
-#     # tmp_map_image = map_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-#     # matching_candidates_by_distance  = [];
-#     # r = 255; b = 0; g = 0;
-#     x_key_point_from_uav = key_point_pixel_list_uav[iter_uav][1];
-#     y_key_point_from_uav = key_point_pixel_list_uav[iter_uav][0];
-#     for i in range(num_closest_descriptors):
-#         pair_index = distance_btw_vectors[i][0];
-#         # g = g + 255/num_closest_descriptors;
-#         # cv.circle(tmp_map_image,(key_point_pixel_list_map[pair_index][1], key_point_pixel_list_map[pair_index][0]), 5, (b,g,r))
-#         x_key_point_from_map = key_point_pixel_list_map[pair_index][1];
-#         y_key_point_from_map = key_point_pixel_list_map[pair_index][0];
-#         # matching_candidates_by_distance.append( [x_key_point_from_map,y_key_point_from_map] );
-#         x_delta_pixel_distance = x_key_point_from_uav - x_key_point_from_map;
-#         y_delta_pixel_distance = y_key_point_from_uav - y_key_point_from_map;
-        
-#         # list_delta_pixel_x.append([x_delta_pixel_distance, y_delta_pixel_distance]);
-#         list_delta_pixel_x[iter_uav*num_closest_descriptors + i ] = x_delta_pixel_distance;
-#         list_delta_pixel_x[iter_uav*num_closest_descriptors + i ] = y_delta_pixel_distance;
 #%% FLANN-based feature matching
 
 FLANN_INDEX_KDTREE = 0
@@ -324,8 +228,8 @@ matches = flann.knnMatch(descriptor_uav,descriptor_map,k=100)
 #%% histogram voting
 list_delta_pixel_x = [];
 list_delta_pixel_y = [];
-number_of_bin_x = 1000
-number_of_bin_y = 1000
+number_of_bin_x = width_map
+number_of_bin_y = height_map # 이 값에 따라 중심점의 히스토그램 뽑히는게 달라져서 T_x, T_y 구하는게 달라지니 맵 이미지 크기와 같게 하면 될 것 같음.
 
 for query_idx in range(len(descriptor_uav)):
     x_query = key_point_list_uav[matches[query_idx][0].queryIdx].pt[0];
@@ -349,38 +253,7 @@ histograme_axes[1].set_title('Y-direction Pixel Histogram')
 histograme_axes[1].set_xlabel('Pixel (30px/bin)')
 histograme_axes[1].set_ylabel('number of Pixels of bin')
 number_per_bin_y, edge_of_bins_y, _ = histograme_axes[1].hist(list_delta_pixel_y,bins=number_of_bin_y)
-#%% not use
-# cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
-# cv.imshow('Top distance-based matches between UAV and Map', tmp_map_image);
-# cv.waitKey(0)
-# cv.destroyAllWindows()    
 
-# #% Generate histogram of matched point.
-# col_pixel_matched_in_map = [];
-# row_pixel_matched_in_map = [];
-# for i in range(num_closest_descriptors):
-#     row,col = key_point_pixel_list_map[distance_btw_vectors[i][0]];
-#     col_pixel_matched_in_map.append(col);
-#     row_pixel_matched_in_map.append(row);
-# #% Visualization of Histogram
-# histogram_figure, histograme_axes = plt.subplots(2,1, constrained_layout = True)
-# histograme_axes[0].grid(True)
-# histogram_figure.suptitle('Matched point X-Y Pixel Histogram', fontsize=16)
-# histograme_axes[0].set_title('Y-direction Pixel Histogram')
-# histograme_axes[0].set_xlabel('Pixel (30px/bin)')
-# histograme_axes[0].set_ylabel('number of Pixels of bin')
-# number_per_bin_y, edge_of_bins_y, _ = histograme_axes[0].hist(row_pixel_matched_in_map,bins=number_of_bin_y)
-
-# histograme_axes[1].grid(True)
-# histograme_axes[1].set_title('X-direction Pixel Histogram')
-# histograme_axes[1].set_xlabel('Pixel (30px/bin)')
-# histograme_axes[1].set_ylabel('number of Pixels of bin')
-# number_per_bin_x, edge_of_bins_x, _  = histograme_axes[1].hist(col_pixel_matched_in_map,bins=number_of_bin_x) # returns: n: array or list of arrays, bins: array, patches: BarContainer or list of a single polygon or list of such objects
-
-# histogram_figure.suptitle('Matched point by Descriptor Vector Distance', fontsize=16)
-# image_figure, image_axes = plt.subplots(1,2, constrained_layout = True)
-# image_axes[0].imshow(key_point_aligned_uav)
-# image_axes[1].imshow(tmp_map_image)
 
 #%% Geometric Match Verification with Histogram Voting.
 
@@ -396,71 +269,141 @@ print ('maxbin', edge_of_bins_x[max_edge_of_bin_x][0])
 max_pixel_value_y = int(edge_of_bins_y[max_edge_of_bin_y][0])
 max_pixel_value_x = int(edge_of_bins_x[max_edge_of_bin_x][0])
 #%% Find matched point using Tx and Ty
-key_point_idx = 8000;
-radius = 20;
-x_low   = key_point_pixel_list_uav[key_point_idx][1] - max_pixel_value_x - radius;
-x_upper = key_point_pixel_list_uav[key_point_idx][1] - max_pixel_value_x + radius;
-y_low   = key_point_pixel_list_uav[key_point_idx][0] - max_pixel_value_y - radius;
-y_upper = key_point_pixel_list_uav[key_point_idx][0] - max_pixel_value_y + radius;
 
-matching_candidate_pixels = []; # pixel(x,y)...
+best_matching = [];
+matching_difference_threshold = 95000;
+for key_point_idx in range(len(key_point_pixel_list_uav)):
+    # key_point_idx = 29000;
+    radius = 25;
+    x_low   = key_point_pixel_list_uav[key_point_idx][1] - max_pixel_value_x - radius;
+    x_upper = key_point_pixel_list_uav[key_point_idx][1] - max_pixel_value_x + radius;
+    y_low   = key_point_pixel_list_uav[key_point_idx][0] - max_pixel_value_y - radius;
+    y_upper = key_point_pixel_list_uav[key_point_idx][0] - max_pixel_value_y + radius;
 
-for i in range(len(key_point_list_map)):
-    x_key_point_map = key_point_pixel_list_map[i][1];
-    y_key_point_map = key_point_pixel_list_map[i][0];
+    matching_candidate_pixels = []; # pixel(x,y)...
+
+    for i in range(len(key_point_list_map)):
+        x_key_point_map = key_point_pixel_list_map[i][1];
+        y_key_point_map = key_point_pixel_list_map[i][0];
+        
+        if (x_key_point_map > x_low   and
+            x_key_point_map < x_upper and
+            y_key_point_map > y_low   and
+            y_key_point_map < y_upper    ):
+            matching_candidate_pixels.append([x_key_point_map, y_key_point_map])
+
     
-    if (x_key_point_map > x_low   and
-        x_key_point_map < x_upper and
-        y_key_point_map > y_low   and
-        y_key_point_map < y_upper ):
-        matching_candidate_pixels.append([x_key_point_map, y_key_point_map])
+    # Matching Candidate Visualization
+    # matching_candidate_map_image = map_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
+    # cv.circle(matching_candidate_map_image,(max_pixel_value_x,max_pixel_value_y),pixel_boundary_radius, (255,0,255))
 
-  
-# Matching Candidate Visualization
-matching_candidate_map_image = map_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-cv.circle(matching_candidate_map_image,(max_pixel_value_x,max_pixel_value_y),pixel_boundary_radius, (255,0,255))
+    # key_point_aligned_uav = aligned_uav_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
+    # cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[key_point_idx][1], key_point_pixel_list_uav[key_point_idx][0]), 5, (0,0,255))
 
-key_point_aligned_uav = aligned_uav_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[key_point_idx][1], key_point_pixel_list_uav[key_point_idx][0]), 5, (0,0,255))
+    for i in range(len(matching_candidate_pixels)):
+        cv.circle(matching_candidate_map_image,(matching_candidate_pixels[i][0], matching_candidate_pixels[i][1]), 1, (0,255,255))
+    # cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
+    # cv.imshow('Matching Candidate from Map', matching_candidate_map_image);
+    # cv.waitKey(0)
+    # cv.destroyAllWindows()    
+    # 현재 어느 정도 맞긴 하지만, 이미지의 시점차에 의해 차이가 많이 나는 이미지 가장자리 부분이 기하학적으로 어긋나는 경우 존재
 
-for i in range(len(matching_candidate_pixels)):
-    cv.circle(matching_candidate_map_image,(matching_candidate_pixels[i][0], matching_candidate_pixels[i][1]), 5, (0,255,255))
-cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
-cv.imshow('Matching Candidate from Map', matching_candidate_map_image);
-cv.waitKey(0)
-cv.destroyAllWindows()    
+    #% Find best maching pixel by template matching
+    x_query_pixel_uav = key_point_pixel_list_uav[key_point_idx][1];
+    y_query_pixel_uav = key_point_pixel_list_uav[key_point_idx][0];
+    template_size     = 30;
+    x_low             = x_query_pixel_uav - template_size;
+    x_upper           = x_query_pixel_uav + template_size;
+    y_low             = y_query_pixel_uav - template_size;
+    y_upper           = y_query_pixel_uav + template_size;
 
-#%% 
-# Find near pixel set near pixel value where value of both histograms are max. 
-matching_candidate_pixels = []; # pixel(x,y)...
-for i in range(num_closest_descriptors):
-    x = matching_candidates_by_distance[i][0];
-    y = matching_candidates_by_distance[i][1];
-    if (x > max_pixel_value_x - pixel_boundary_radius and
-        x < max_pixel_value_x + pixel_boundary_radius and
-        y > max_pixel_value_y - pixel_boundary_radius and
-        y < max_pixel_value_y + pixel_boundary_radius ):
-        matching_candidate_pixels.append([x,y])
-    
-# Matching Candidate Visualization
-matching_candidate_map_image = map_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-cv.circle(matching_candidate_map_image,(max_pixel_value_x,max_pixel_value_y),pixel_boundary_radius, (255,0,255))
+    template_img      = aligned_uav_img_gray[ y_low:y_upper, x_low:x_upper].copy();
+    # base_map_img      = map_img_gray[ x_low   - max_pixel_value_x - pixel_boundary_radius:
+    #                                   x_upper - max_pixel_value_x + pixel_boundary_radius, 
+    #                                   y_low   - max_pixel_value_y - pixel_boundary_radius:
+    #                                   y_upper - max_pixel_value_y + pixel_boundary_radius].copy();
 
-for i in range(len(matching_candidate_pixels)):
-    cv.circle(matching_candidate_map_image,(matching_candidate_pixels[i][0], matching_candidate_pixels[i][1]), 5, (0,255,255))
-cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
-cv.imshow('Matching Candidate from Map', matching_candidate_map_image);
-cv.waitKey(0)
-cv.destroyAllWindows()    
+    if( x_low   <  0            or
+        x_upper >  width_uav    or
+        y_low   <  0            or
+        y_upper >  height_uav      ): # 템플릿 사이즈만큼의 이미지가 만들어지지 않는 가장자리 부분은 스킵
+        continue;
+        print("Image out of Range")
 
-histogram_figure.suptitle('Near Matched Pixels', fontsize=16)
-image_figure, image_axes = plt.subplots(1,2, constrained_layout = True)
-image_axes[0].imshow(key_point_aligned_uav)
-image_axes[1].imshow(matching_candidate_map_image)
+        is_refinement_done = False;
+    else:
+        matching_difference_idx = [];
+        for idx in range(len(matching_candidate_pixels)):
+            # Get center pixel from candidate pixel list.
+            x_candidate = matching_candidate_pixels[idx][0];
+            y_candidate = matching_candidate_pixels[idx][1];
+            # Get image from map_img that has same size with template image.
+            x_low_map    = x_candidate - template_size;
+            x_upper_map  = x_candidate + template_size;
+            y_low_map    = y_candidate - template_size;
+            y_upper_map  = y_candidate + template_size
+            if( x_low_map   <  0            or
+                x_upper_map >  width_map    or
+                y_low_map   <  0            or
+                y_upper_map >  height_map      ): # 템플릿 사이즈만큼의 이미지가 만들어지지 않는 가장자리 부분은 스킵
+                print("Map Base Image out of Range")
+                is_refinement_done = False;
+                break;
+            if( aligned_uav_img_gray[y_low, x_low]     == 0 and 
+                aligned_uav_img_gray[y_low, x_upper]   == 0 and 
+                aligned_uav_img_gray[y_upper, x_low]   == 0 and 
+                aligned_uav_img_gray[y_upper, x_upper] == 0 ): # 템플릿 사이즈만큼의 이미지가 만들어지지 않는 가장자리 부분은 스킵
+                print("UAV Template Image out of Range")
+                is_refinement_done = False;
+                break;
+            base_img = map_img_gray[ y_low_map:y_upper_map, x_low_map:x_upper_map];
+            score    = np.sum(np.abs(np.subtract(template_img,base_img, dtype=np.float64)))
+            matching_difference_idx.append([idx, score])
+            is_refinement_done = True;
+            # cv.imshow('template image', template_img);
+            # cv.imshow('Base image', base_img);
+            # cv.waitKey(0)
+            # cv.destroyAllWindows()
+        if(is_refinement_done == True):
+            matching_difference_idx.sort(key=lambda x:x[1])
+            matched_idx = matching_difference_idx[0][0]
+            matching_difference = matching_difference_idx[0][1]
+            if ( matching_difference < matching_difference_threshold ): # Matching score 기준으로 이상한 애들은 필터링 해야함
+                x_low_map    = matching_candidate_pixels[matched_idx][0] - template_size;
+                x_upper_map  = matching_candidate_pixels[matched_idx][0] + template_size;
+                y_low_map    = matching_candidate_pixels[matched_idx][1] - template_size;
+                y_upper_map  = matching_candidate_pixels[matched_idx][1] + template_size;
+                best_matching.append([ [x_query_pixel_uav, y_query_pixel_uav],[matching_candidate_pixels[matched_idx][0],matching_candidate_pixels[matched_idx][1]] ]);
+            else:
+                print("Matching difference is too big.")
+                
 
-#%% Find best maching pixel by template matching
+best_matching_key_points =[];
+for i in range(len(best_matching)):
+    best_matching_key_points.append(cv.keypoint())
+result = cv.drawMatchesKnn(aligned_uav_img,key_point_list_uav,map_img,key_point_list_map,good,None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+
+        # base_img     = map_img_gray[ y_low_map:y_upper_map, x_low_map:x_upper_map];
+        # print("matching score: ", matching_difference_idx[0][1])
+        # cv.imshow('template image', template_img);
+        # cv.imshow('Base image', base_img);
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+        # best_matching_map = matching_candidate_map_image.copy();
+        # cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
+        # cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
+        # cv.imshow('Matching Candidate from Map', best_matching_map);
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
 
 
 #%% 위에 템플릿 매칭까지 다 되면 for문 돌려서 UAV 이미지에서 뽑은 모든 피쳐에 대해 진행하는 코드 작성
 
 #%% 매칭 포인트가 다 생성되면 이미지 매칭 진행
+
+
+## To Do 
+# 1. histogram voting 잘 되는지 확인 -> Done
+# 2. Template matching  버그 수정
+# 3. uav에 있는 모든 피쳐점에 대해 loop하여 최종 매칭 포인트 찾기
+# 4. 매칭 정보를 사용하여 homography 찾기
