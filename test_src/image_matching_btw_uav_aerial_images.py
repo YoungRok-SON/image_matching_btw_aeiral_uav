@@ -21,7 +21,6 @@ from skimage.segmentation import mark_boundaries
 from skimage.util         import img_as_float
 from skimage              import io
 
-
 from exif import Image
 #%% About Map image Loading
 map_type = "konkuk_part" # 1. full_map, 2.konkuk_full, 3.konkuk_part
@@ -254,7 +253,6 @@ histograme_axes[1].set_xlabel('Pixel (30px/bin)')
 histograme_axes[1].set_ylabel('number of Pixels of bin')
 number_per_bin_y, edge_of_bins_y, _ = histograme_axes[1].hist(list_delta_pixel_y,bins=number_of_bin_y)
 
-
 #%% Geometric Match Verification with Histogram Voting.
 
 # Get X-axis histogram max
@@ -296,22 +294,6 @@ for key_point_idx in range(len(matches)):
             y_key_point_map < y_upper    ):
             matching_candidate_pixels.append([x_key_point_map, y_key_point_map, i]) # key_point_pixel_list_map(key_point_list_map)의 해당 인덱스를 같이 가져감
 
-    
-    # Matching Candidate Visualization
-    # matching_candidate_map_image = map_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-    # cv.circle(matching_candidate_map_image,(max_pixel_value_x,max_pixel_value_y),pixel_boundary_radius, (255,0,255))
-
-    # key_point_aligned_uav = aligned_uav_img.copy(); # Copy 해 주어야 서클이 계속 갱신됨
-    # cv.circle(key_point_aligned_uav,(key_point_pixel_list_uav[key_point_idx][1], key_point_pixel_list_uav[key_point_idx][0]), 5, (0,0,255))
-
-    # for i in range(len(matching_candidate_pixels)):
-    #     cv.circle(matching_candidate_map_image,(matching_candidate_pixels[i][0], matching_candidate_pixels[i][1]), 1, (0,255,255))
-    # cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
-    # cv.imshow('Matching Candidate from Map', matching_candidate_map_image);
-    # cv.waitKey(0)
-    # cv.destroyAllWindows()    
-    # 현재 어느 정도 맞긴 하지만, 이미지의 시점차에 의해 차이가 많이 나는 이미지 가장자리 부분이 기하학적으로 어긋나는 경우 존재
-
     #% Find best maching pixel by template matching
     template_size     = 30;
     x_low             = int(x_query_pixel_uav - template_size);
@@ -324,22 +306,16 @@ for key_point_idx in range(len(matches)):
         x_upper >=  width_uav    or
         y_low   <  0            or
         y_upper >=  height_uav      ): # 템플릿 사이즈만큼의 이미지가 만들어지지 않는 가장자리 부분은 스킵
-        # print("Image out of Range")
         is_refinement_done = False;
         continue;
     elif( aligned_uav_img_gray[y_low, x_low]     == 0 or 
           aligned_uav_img_gray[y_low, x_upper]   == 0 or 
           aligned_uav_img_gray[y_upper, x_low]   == 0 or 
           aligned_uav_img_gray[y_upper, x_upper] == 0 ): # 템플릿 사이즈만큼의 이미지가 만들어지지 않는 가장자리 부분은 스킵
-        # print("UAV Template Image out of Range")
         is_refinement_done = False;
         continue;
     else:
         template_img      = aligned_uav_img_gray[ y_low:y_upper, x_low:x_upper].copy();
-        # base_map_img      = map_img_gray[ x_low   - max_pixel_value_x - pixel_boundary_radius:
-        #                                   x_upper - max_pixel_value_x + pixel_boundary_radius, 
-        #                                   y_low   - max_pixel_value_y - pixel_boundary_radius:
-        #                                   y_upper - max_pixel_value_y + pixel_boundary_radius].copy();
         matching_difference_idx = [];
         for idx in range(len(matching_candidate_pixels)):
             # Get center pixel from candidate pixel list.
@@ -355,7 +331,6 @@ for key_point_idx in range(len(matches)):
                 x_upper_map >  width_map    or
                 y_low_map   <  0            or
                 y_upper_map >  height_map      ): # 템플릿 사이즈만큼의 이미지가 만들어지지 않는 가장자리 부분은 스킵
-                # print("Map Base Image out of Range")
                 is_refinement_done = False;
                 break;
             
@@ -363,10 +338,7 @@ for key_point_idx in range(len(matches)):
             score    = np.sum(np.abs(np.subtract(template_img,base_img, dtype=np.float64)))
             matching_difference_idx.append([idx, score, idx_map_key_point_idx]) # 여기에 map keypoint에 대한 인덱싱 추가하고
             is_refinement_done = True;
-            # cv.imshow('template image', template_img);
-            # cv.imshow('Base image', base_img);
-            # cv.waitKey(0)
-            # cv.destroyAllWindows()
+
         if(is_refinement_done == True):
             matching_difference_idx.sort(key=lambda x:x[1])
             matched_idx = matching_difference_idx[0][0] # 여기서 그걸 받고
@@ -377,42 +349,63 @@ for key_point_idx in range(len(matches)):
                 x_upper_map  = matching_candidate_pixels[matched_idx][0] + template_size;
                 y_low_map    = matching_candidate_pixels[matched_idx][1] - template_size;
                 y_upper_map  = matching_candidate_pixels[matched_idx][1] + template_size;
-                # best_matching.append([ [x_query_pixel_uav, y_query_pixel_uav],[matching_candidate_pixels[matched_idx][0],matching_candidate_pixels[matched_idx][1]] ]);
                 best_matching.append(  cv.DMatch(key_point_idx,idx_train_idx,score) ) 
-            # else:
-                # print("Matching difference is too big.")
 #%% Matching result Visualization
 good_matches = tuple(best_matching)
 tuple_key_poins_uav = tuple(key_point_list_uav)
 tuple_key_poins_map = tuple(key_point_list_map)
-# feature_matching_result = cv.drawMatchesKnn(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, good_matches, None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
 feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, best_matching, None, flags=2)
 cv.imshow('Matched Result', feature_matching_result);
 cv.waitKey(0)
 cv.destroyAllWindows()
 
-        # base_img     = map_img_gray[ y_low_map:y_upper_map, x_low_map:x_upper_map];
-        # print("matching score: ", matching_difference_idx[0][1])
-        # cv.imshow('template image', template_img);
-        # cv.imshow('Base image', base_img);
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
-        # best_matching_map = matching_candidate_map_image.copy();
-        # cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
-        # cv.imshow('Queried Pixel of UAV Image', key_point_aligned_uav);
-        # cv.imshow('Matching Candidate from Map', best_matching_map);
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
-
-
-#%% 위에 템플릿 매칭까지 다 되면 for문 돌려서 UAV 이미지에서 뽑은 모든 피쳐에 대해 진행하는 코드 작성
-
 #%% 매칭 포인트가 다 생성되면 이미지 매칭 진행
 
+if len(good_matches) > MIN_MATCH_COUNT:
+    src_points = np.float32( [ key_point_list_uav[best_matching[:][:].queryIdx] ] )
 
+#%% 예제 코드
+MIN_MATCH_COUNT = 10
+if len(good)>MIN_MATCH_COUNT:
+    src_pts = np.float32([ key_point_list_uav[dmatch_element.queryIdx].pt for dmatch_element in best_matching ]).reshape(-1,1,2)
+    dst_pts = np.float32([ key_point_list_map[dmatch_element.trainIdx].pt for dmatch_element in best_matching ]).reshape(-1,1,2)
+    M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
+    matchesMask = mask.ravel().tolist()
+    h,w = aligned_uav_img_gray.shape
+    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+    dst = cv.perspectiveTransform(pts,M)
+    map_img = cv.polylines(map_img,[np.int32(dst)],True,255,3, cv.LINE_AA)
+else:
+    print( "Not enough matches are found - {}/{}".format(len(good), MIN_MATCH_COUNT) )
+    matchesMask = None
+
+draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+                   singlePointColor = None,
+                   matchesMask = matchesMask, # draw only inliers
+                   flags = 2)
+img3 = cv.drawMatches(aligned_uav_img,key_point_list_uav, map_img,key_point_list_map,best_matching,None,**draw_params)
+plt.imshow(img3, 'gray'),plt.show()
+cv.imshow('Matched Result', img3);
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+#%%
+result3 = cv.warpPerspective(aligned_uav_img, M, (width_map,height_map))
+alpha = 0.5
+beta = 0.7
+new_image = np.zeros(map_img.shape,map_img.dtype)
+for y in range(map_img.shape[0]):
+    for x in range(map_img.shape[1]):
+        for c in range(map_img.shape[2]):
+            new_image[y,x,c] = np.clip(alpha*map_img[y,x,c] + beta, 0, 255)
+
+overlay = cv.add(new_image,result3)
+cv.imshow('result3', overlay)
+cv.waitKey(0)
+cv.destroyAllWindows()
 ## To Do 
 # 1. histogram voting 잘 되는지 확인 -> Done
-# 2. Template matching  버그 수정
-# 3. uav에 있는 모든 피쳐점에 대해 loop하여 최종 매칭 포인트 찾기
-# 4. 매칭 정보를 사용하여 homography 찾기
+# 2. Template matching  버그 수정 -> Done
+# 3. uav에 있는 모든 피쳐점에 대해 loop하여 최종 매칭 포인트 찾기 -> Done
+# 4. 매칭 정보를 사용하여 homography 찾기  -> Done
+# 5. 매칭 결과 보기
