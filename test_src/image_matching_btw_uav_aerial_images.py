@@ -22,7 +22,7 @@ from skimage.util         import img_as_float
 from skimage              import io
 
 from exif import Image
-#%% About Map image Loading
+#% About Map image Loading
 map_type = "konkuk_part" # 1. full_map, 2.konkuk_full, 3.konkuk_part
 
 aerial_map_path      = "C:/Users/Alien08/aerial_map_based_illegal_detection/02_map_images/";
@@ -39,7 +39,7 @@ uav_img_path         = "C:/Users/Alien08/aerial_map_based_illegal_detection/01_u
 uav_img_file_name    = "DJI_0378.JPG";
 uav_img_path_name    = uav_img_path + uav_img_file_name ;
 
-#%% About Resize
+#% About Resize
 with open(uav_img_path_name, "rb") as f:
     uav_img = Image(f)
 # if you wanna see list of meta data then use "dir(uav_img)"
@@ -57,31 +57,31 @@ target_size_uav_img  = np.int16(np.array([width_image, height_image]) * resize_f
 
 #%% Load Aerial Map data
 map_img     = cv.imread(aerial_map_path_name,cv.IMREAD_COLOR);
-imgplot_map = plt.imshow(map_img);
-cv.imshow('Map Image', map_img);
-cv.waitKey(0)
-cv.destroyAllWindows()
-#%% Load UAV Map Data
+# imgplot_map = plt.imshow(map_img);
+# cv.imshow('Map Image', map_img);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+#% Load UAV Map Data
 uav_img     = cv.imread(uav_img_path_name, cv.IMREAD_COLOR);
-imgplot_uav = plt.imshow(uav_img);
-cv.imshow('UAV Image', uav_img);
-cv.waitKey(0)
-cv.destroyAllWindows()
-#%% Image preprocessing
+# imgplot_uav = plt.imshow(uav_img);
+# cv.imshow('UAV Image', uav_img);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+#% Image preprocessing
 # Image Resize
 downsampled_uav_img = cv.resize(uav_img,target_size_uav_img,interpolation=cv.INTER_AREA);
-imgplot_uav_downsampled = plt.imshow(downsampled_uav_img);
-cv.imshow('Downsampled UAV Image', downsampled_uav_img);
-cv.waitKey(0)
-cv.destroyAllWindows()
+# imgplot_uav_downsampled = plt.imshow(downsampled_uav_img);
+# cv.imshow('Downsampled UAV Image', downsampled_uav_img);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 # Orientation Matching: 일단 손으로 대강 맞추고 나중에 드론으로 할 때에는 드론 헤딩이랑 같이 쓰지 뭐..
 # About Orientation matching
 target_orientation   = 130; # [deg]
 aligned_uav_img = imutils.rotate_bound(downsampled_uav_img, target_orientation);
-imgplot_uav_aligned = plt.imshow(aligned_uav_img);
-cv.imshow('Aligned UAV Image', aligned_uav_img);
-cv.waitKey(0)
-cv.destroyAllWindows()
+# imgplot_uav_aligned = plt.imshow(aligned_uav_img);
+# cv.imshow('Aligned UAV Image', aligned_uav_img);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 #%% About Key point extraction using SLIC - UAV
 
@@ -122,9 +122,9 @@ mask_inv = cv.bitwise_not(np.int8(croped_label_mask))
 result_bg = cv.bitwise_and(tmp_aligned_uav_img, tmp_aligned_uav_img, mask=mask_inv)
 result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask))
 result = cv.add(result_bg, result_fg)
-cv.imshow('SLIC Key points of UAV Image', result)
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow('SLIC Key points of UAV Image', result)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 # Conver to Grayscale Image for remove useless SLIC point on image boudary.
 aligned_uav_img_gray = cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY)
@@ -184,9 +184,9 @@ mask_inv = cv.bitwise_not(np.int8(croped_label_mask))
 result_bg = cv.bitwise_and(tmp_map_img, tmp_map_img, mask=mask_inv)
 result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask))
 result = cv.add(result_bg, result_fg)
-cv.imshow('SLIC Key points of Map Image', result)
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow('SLIC Key points of Map Image', result)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 # Conver to Grayscale Image for remove useless SLIC point on image boudary.
 map_img_gray = cv.cvtColor(map_img, cv.COLOR_BGR2GRAY)
@@ -216,7 +216,7 @@ list_delta_pixel_y = [0 for i in range(len(descriptor_uav)*100)];
 num_closest_descriptors = 100;
 pixel_boundary_radius = 50; # find near pixels within this boudnary.
 
-#%% FLANN-based feature matching
+#% FLANN-based feature matching
 
 FLANN_INDEX_KDTREE = 0
 index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
@@ -266,13 +266,18 @@ print ('maxbin', edge_of_bins_x[max_edge_of_bin_x][0])
 # Find pixel value where value of both histograms are max.
 max_pixel_value_y = int(edge_of_bins_y[max_edge_of_bin_y][0])
 max_pixel_value_x = int(edge_of_bins_x[max_edge_of_bin_x][0])
-#%% Find matched point using Tx and Ty
+
+#% Find matched point using Tx and Ty
 
 best_matching = [];
 matching_difference_threshold = 95000;
+duration_feature_matching_filtering = 0;
+duration_template_matching = 0;
+
 for key_point_idx in range(len(matches)):
 # for key_point_idx in range(1000,2000):
-    # key_point_idx = 29000;
+    # key_point_idx = 9000;
+    start =  time.time()
     radius = 25;
     x_query_pixel_uav = key_point_list_uav[matches[key_point_idx][0].queryIdx].pt[0];
     y_query_pixel_uav = key_point_list_uav[matches[key_point_idx][0].queryIdx].pt[1];
@@ -293,7 +298,10 @@ for key_point_idx in range(len(matches)):
             y_key_point_map > y_low   and
             y_key_point_map < y_upper    ):
             matching_candidate_pixels.append([x_key_point_map, y_key_point_map, i]) # key_point_pixel_list_map(key_point_list_map)의 해당 인덱스를 같이 가져감
-
+    end = time.time()
+    duration_feature_matching_filtering = duration_feature_matching_filtering + start - end
+    
+    start = time.time()
     #% Find best maching pixel by template matching
     template_size     = 30;
     x_low             = int(x_query_pixel_uav - template_size);
@@ -350,23 +358,31 @@ for key_point_idx in range(len(matches)):
                 y_low_map    = matching_candidate_pixels[matched_idx][1] - template_size;
                 y_upper_map  = matching_candidate_pixels[matched_idx][1] + template_size;
                 best_matching.append(  cv.DMatch(key_point_idx,idx_train_idx,score) ) 
+                continue;
+    end = time.time()
+    duration_template_matching = duration_template_matching + start - end
+                
+                
+best_matching_map = map_img.copy();
+cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
+cv.imshow('Queried Pixel of UAV Image', aligned_uav_img);
+cv.imshow('Matching Candidate from Map', best_matching_map);
+cv.waitKey(0)
+cv.destroyAllWindows()
 #%% Matching result Visualization
 good_matches = tuple(best_matching)
 tuple_key_poins_uav = tuple(key_point_list_uav)
 tuple_key_poins_map = tuple(key_point_list_map)
 feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, best_matching, None, flags=2)
+# feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, matches, None, flags=2)
 cv.imshow('Matched Result', feature_matching_result);
 cv.waitKey(0)
 cv.destroyAllWindows()
 
 #%% 매칭 포인트가 다 생성되면 이미지 매칭 진행
-
-if len(good_matches) > MIN_MATCH_COUNT:
-    src_points = np.float32( [ key_point_list_uav[best_matching[:][:].queryIdx] ] )
-
-#%% 예제 코드
+    
 MIN_MATCH_COUNT = 10
-if len(good)>MIN_MATCH_COUNT:
+if len(good_matches)>MIN_MATCH_COUNT:
     src_pts = np.float32([ key_point_list_uav[dmatch_element.queryIdx].pt for dmatch_element in best_matching ]).reshape(-1,1,2)
     dst_pts = np.float32([ key_point_list_map[dmatch_element.trainIdx].pt for dmatch_element in best_matching ]).reshape(-1,1,2)
     M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
@@ -383,16 +399,16 @@ draw_params = dict(matchColor = (0,255,0), # draw matches in green color
                    singlePointColor = None,
                    matchesMask = matchesMask, # draw only inliers
                    flags = 2)
-img3 = cv.drawMatches(aligned_uav_img,key_point_list_uav, map_img,key_point_list_map,best_matching,None,**draw_params)
-plt.imshow(img3, 'gray'),plt.show()
-cv.imshow('Matched Result', img3);
-cv.waitKey(0)
-cv.destroyAllWindows()
+# img3 = cv.drawMatches(aligned_uav_img,key_point_list_uav, map_img,key_point_list_map,best_matching,None,**draw_params)
+# plt.imshow(img3, 'gray'),plt.show()
+# cv.imshow('Matched Result', img3);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 #%%
 result3 = cv.warpPerspective(aligned_uav_img, M, (width_map,height_map))
 alpha = 0.5
-beta = 0.7
+beta = 0.1
 new_image = np.zeros(map_img.shape,map_img.dtype)
 for y in range(map_img.shape[0]):
     for x in range(map_img.shape[1]):
