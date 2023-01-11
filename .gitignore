@@ -1,13 +1,16 @@
-<<<<<<< HEAD
 engineering bldg map genration test/*
 aerial_map_generation/test_src/KU_orthogonal_map/*
-=======
-<<<<<<< HEAD
+
 engineering bldg map genration test/
-=======
 engineering bldg map genration test/*
 aerial_map_generation/test_src/KU_orthogonal_map/*
->>>>>>> 396e1b8 (git ignore file modified.)
->>>>>>> 118e537 (i am gonna leave)
+
 *.p4d
 *.asv
+
+.vscode/*
+01_uav_images/*
+02_map_images/*
+Makefile
+
+build/*
