@@ -14,6 +14,7 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import imutils
+import time 
 
 #SLIC
 from skimage.segmentation import slic
@@ -111,18 +112,18 @@ labels = seeds.getLabels() # height x width matrix. Each component indicates the
 
 
 # draw contour
-label_mask = seeds.getLabelContourMask(False)
-croped_label_mask = cv.bitwise_and(label_mask,label_mask,mask=cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY))
+label_mask_uav = seeds.getLabelContourMask(False)
+croped_label_mask_uav = cv.bitwise_and(label_mask_uav,label_mask_uav,mask=cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY))
 tmp_aligned_uav_img = aligned_uav_img.copy();
 
 # Draw color coded image
 color_img = np.zeros((height_uav, width_uav, 3), np.uint8)
 color_img[:] = (0, 0, 255)
-mask_inv = cv.bitwise_not(np.int8(croped_label_mask))
+mask_inv = cv.bitwise_not(np.int8(croped_label_mask_uav))
 result_bg = cv.bitwise_and(tmp_aligned_uav_img, tmp_aligned_uav_img, mask=mask_inv)
-result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask))
-result = cv.add(result_bg, result_fg)
-# cv.imshow('SLIC Key points of UAV Image', result)
+result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask_uav))
+result_uav = cv.add(result_bg, result_fg)
+# cv.imshow('SLIC Key points of UAV Image', result_uav)
 # cv.waitKey(0)
 # cv.destroyAllWindows()
 
@@ -130,23 +131,34 @@ result = cv.add(result_bg, result_fg)
 aligned_uav_img_gray = cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY)
 # Extract key points from slic boundary points. 
 key_point_pixel_list_uav = [];
+count = 0;
 for row in range(num_slic_pixel_gap_uav, height_uav-num_slic_pixel_gap_uav):
     for col in range(num_slic_pixel_gap_uav, width_uav-num_slic_pixel_gap_uav):
         if (croped_label_mask[row,col]       != 0                   and
             aligned_uav_img_gray[row + num_slic_pixel_gap_uav,col ]   != 0 and 
             aligned_uav_img_gray[row - num_slic_pixel_gap_uav,col ]   != 0 and
             aligned_uav_img_gray[row, col - num_slic_pixel_gap_uav]   != 0 and
-            aligned_uav_img_gray[row ,col + num_slic_pixel_gap_uav]   != 0   ):
+            aligned_uav_img_gray[row ,col + num_slic_pixel_gap_uav]   != 0 and
+            count%30 == 0 ): #%% Key point sampling
             key_point_pixel_list_uav.append([row, col]);
+        count = count + 1;
 
-# Generate Keypoint object list from pixel value.
+#% Generate Keypoint object list from pixel value.
 key_point_list_uav = [];
 for i in range(len(key_point_pixel_list_uav)):
     key_point_list_uav.append(cv.KeyPoint(x=key_point_pixel_list_uav[i][1],y=key_point_pixel_list_uav[i][0], size=1,angle=0))            
             
 # Compute descriptor vector from key points.
-sift_detector_uav = cv.SIFT_create();
-key_points_uav, descriptor_uav = sift_detector_uav.compute(aligned_uav_img,key_point_list_uav,None)
+brisk_detector_uav = cv.BRISK_create();
+key_points_uav, descriptor_uav = brisk_detector_uav.compute(aligned_uav_img,key_point_list_uav,None)
+
+sampled_key_points = aligned_uav_img.copy()
+for i in range(len(key_point_list_uav)):
+    cv.circle(sampled_key_points,[key_point_pixel_list_uav[i][1],key_point_pixel_list_uav[i][0]], 3, [0,0,255],-1)
+cv.imshow('SLIC Key points of UAV Image', sampled_key_points)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
 #%% About Key point extraction using SLIC -Map
 num_superpixels_map        = 500; # Desired number of superpixels
 num_iterations_map         = 20;   # Number of pixel level iterations. The higher, the better quality
@@ -173,17 +185,17 @@ print('Final number of superpixels: %d' % num_of_superpixels_result)
 labels = seeds.getLabels() # height x width matrix. Each component indicates the superpixel index of the corresponding pixel position
 
 # draw contour
-label_mask = seeds.getLabelContourMask(False)
-croped_label_mask = cv.bitwise_and(label_mask,label_mask,mask=cv.cvtColor(map_img, cv.COLOR_BGR2GRAY))
+label_mask_map = seeds.getLabelContourMask(False)
+croped_label_mask_map = cv.bitwise_and(label_mask_map,label_mask_map,mask=cv.cvtColor(map_img, cv.COLOR_BGR2GRAY))
 tmp_map_img = map_img;
 
 # Draw color coded image
 color_img = np.zeros((height_map, width_map, 3), np.uint8)
 color_img[:] = (0, 0, 255)
-mask_inv = cv.bitwise_not(np.int8(croped_label_mask))
+mask_inv = cv.bitwise_not(np.int8(croped_label_mask_map))
 result_bg = cv.bitwise_and(tmp_map_img, tmp_map_img, mask=mask_inv)
-result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask))
-result = cv.add(result_bg, result_fg)
+result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask_map))
+result_map = cv.add(result_bg, result_fg)
 # cv.imshow('SLIC Key points of Map Image', result)
 # cv.waitKey(0)
 # cv.destroyAllWindows()
@@ -194,7 +206,7 @@ map_img_gray = cv.cvtColor(map_img, cv.COLOR_BGR2GRAY)
 key_point_pixel_list_map = [];
 for row in range(num_slic_pixel_gap_map, height_map-num_slic_pixel_gap_map):
     for col in range(num_slic_pixel_gap_map, width_map-num_slic_pixel_gap_map):
-        if (croped_label_mask[row,col]                        != 0 and
+        if (croped_label_mask_map[row,col]                        != 0 and
             map_img_gray[row + num_slic_pixel_gap_map,col ]   != 0 and 
             map_img_gray[row - num_slic_pixel_gap_map,col ]   != 0 and
             map_img_gray[row, col - num_slic_pixel_gap_map]   != 0 and
@@ -207,23 +219,26 @@ for i in range(len(key_point_pixel_list_map)): # 시각화용 match object 생�
     key_point_list_map.append(cv.KeyPoint(x=key_point_pixel_list_map[i][1], y=key_point_pixel_list_map[i][0], size=1,angle=0))            
             
 # Compute descriptor vector from key points.
-sift_detector_map = cv.SIFT_create();
-key_points_map, descriptor_map = sift_detector_map.compute(map_img,key_point_list_map,None)
+brisk_detector_map = cv.BRISK_create();
+key_points_map, descriptor_map = brisk_detector_map.compute(map_img,key_point_list_map,None)
 
 #%% Check Specific one feature point among SLIC key points.
 list_delta_pixel_x = [0 for i in range(len(descriptor_uav)*100)];
 list_delta_pixel_y = [0 for i in range(len(descriptor_uav)*100)];
 num_closest_descriptors = 100;
-pixel_boundary_radius = 50; # find near pixels within this boudnary.
+pixel_boundary_radius = 70; # find near pixels within this boudnary.
 
 #% FLANN-based feature matching
 
-FLANN_INDEX_KDTREE = 0
-index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
-search_params = dict(checks=50)
+FLANN_INDEX_LSH = 6
+index_params= dict(algorithm = FLANN_INDEX_LSH,
+                   table_number = 6, # 12
+                   key_size = 12,     # 20
+                   multi_probe_level = 1) #2
+search_params = dict(checks=50)   # or pass empty dictionary
 
 flann = cv.FlannBasedMatcher(index_params,search_params)
-matches = flann.knnMatch(descriptor_uav,descriptor_map,k=100)
+matches = flann.knnMatch(descriptor_uav,descriptor_map,k=num_closest_descriptors)
 #%% histogram voting
 list_delta_pixel_x = [];
 list_delta_pixel_y = [];
@@ -270,7 +285,7 @@ max_pixel_value_x = int(edge_of_bins_x[max_edge_of_bin_x][0])
 #% Find matched point using Tx and Ty
 
 best_matching = [];
-matching_difference_threshold = 95000;
+matching_difference_threshold = 85000;
 duration_feature_matching_filtering = 0;
 duration_template_matching = 0;
 
@@ -299,7 +314,7 @@ for key_point_idx in range(len(matches)):
             y_key_point_map < y_upper    ):
             matching_candidate_pixels.append([x_key_point_map, y_key_point_map, i]) # key_point_pixel_list_map(key_point_list_map)의 해당 인덱스를 같이 가져감
     end = time.time()
-    duration_feature_matching_filtering = duration_feature_matching_filtering + start - end
+    duration_feature_matching_filtering = duration_feature_matching_filtering + end - start
     
     start = time.time()
     #% Find best maching pixel by template matching
@@ -358,26 +373,27 @@ for key_point_idx in range(len(matches)):
                 y_low_map    = matching_candidate_pixels[matched_idx][1] - template_size;
                 y_upper_map  = matching_candidate_pixels[matched_idx][1] + template_size;
                 best_matching.append(  cv.DMatch(key_point_idx,idx_train_idx,score) ) 
-                continue;
     end = time.time()
-    duration_template_matching = duration_template_matching + start - end
+    duration_template_matching = duration_template_matching + end - start
                 
-                
-best_matching_map = map_img.copy();
-cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
-cv.imshow('Queried Pixel of UAV Image', aligned_uav_img);
-cv.imshow('Matching Candidate from Map', best_matching_map);
-cv.waitKey(0)
-cv.destroyAllWindows()
+print("Duration for matching filtering: ",  duration_feature_matching_filtering//60,"m ",duration_feature_matching_filtering%60,"s")
+print("Duration for matching refinement: ",  duration_template_matching//60,"m ",duration_template_matching%60,"s")
+# best_matching_map = map_img.copy();
+# cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
+# cv.imshow('Queried Pixel of UAV Image', aligned_uav_img);
+# cv.imshow('Matching Candidate from Map', best_matching_map);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 #%% Matching result Visualization
 good_matches = tuple(best_matching)
 tuple_key_poins_uav = tuple(key_point_list_uav)
 tuple_key_poins_map = tuple(key_point_list_map)
-feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, best_matching, None, flags=2)
+feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, best_matching[:], None, flags=2)
 # feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, matches, None, flags=2)
 cv.imshow('Matched Result', feature_matching_result);
 cv.waitKey(0)
 cv.destroyAllWindows()
+
 
 #%% 매칭 포인트가 다 생성되면 이미지 매칭 진행
     
@@ -390,30 +406,23 @@ if len(good_matches)>MIN_MATCH_COUNT:
     h,w = aligned_uav_img_gray.shape
     pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
     dst = cv.perspectiveTransform(pts,M)
-    map_img = cv.polylines(map_img,[np.int32(dst)],True,255,3, cv.LINE_AA)
+    result_map = map_img.copy()
+    result_map = cv.polylines(result_map,[np.int32(dst)],True,255,3, cv.LINE_AA)
 else:
     print( "Not enough matches are found - {}/{}".format(len(good), MIN_MATCH_COUNT) )
     matchesMask = None
 
-draw_params = dict(matchColor = (0,255,0), # draw matches in green color
-                   singlePointColor = None,
-                   matchesMask = matchesMask, # draw only inliers
-                   flags = 2)
-# img3 = cv.drawMatches(aligned_uav_img,key_point_list_uav, map_img,key_point_list_map,best_matching,None,**draw_params)
-# plt.imshow(img3, 'gray'),plt.show()
-# cv.imshow('Matched Result', img3);
-# cv.waitKey(0)
-# cv.destroyAllWindows()
+
 
 #%%
 result3 = cv.warpPerspective(aligned_uav_img, M, (width_map,height_map))
 alpha = 0.5
 beta = 0.1
-new_image = np.zeros(map_img.shape,map_img.dtype)
-for y in range(map_img.shape[0]):
-    for x in range(map_img.shape[1]):
-        for c in range(map_img.shape[2]):
-            new_image[y,x,c] = np.clip(alpha*map_img[y,x,c] + beta, 0, 255)
+new_image = np.zeros(result_map.shape,map_img.dtype)
+for y in range(result_map.shape[0]):
+    for x in range(result_map.shape[1]):
+        for c in range(result_map.shape[2]):
+            new_image[y,x,c] = np.clip(alpha*result_map[y,x,c] + beta, 0, 255)
 
 overlay = cv.add(new_image,result3)
 cv.imshow('result3', overlay)
