@@ -14,13 +14,33 @@
 
 ImageMatching::ImageMatching(/* args */)
 {
+    if( Init() == true )
+        std::cout  << "Image Matching Class Init has failed." << std::endl;
 }
 
-ImageMatching::~ImageMatching()
-{
-}
+ImageMatching::~ImageMatching() {}
 
 bool ImageMatching::Init()
+{
+    return true;
+}
+
+bool ImageMatching::RunImageMatching();
+
+
+bool ImageMatching::PreprocessUAVImg()
+{
+
+}
+bool ImageMatching::KeyPointExtractionSLIC()
+{
+
+}
+bool ImageMatching::DescriptorGenerationBRISK()
+{
+
+}
+bool MatchImages()
 {
 
 }

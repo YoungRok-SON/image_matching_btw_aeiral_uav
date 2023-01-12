@@ -13,23 +13,28 @@
 #include <iostream>
 #include <string>
 
-#include "opencv2/highgui/highgui.hpp"
+#include "ImagePreprocessing.hpp"
+#include "ImageMatching.hpp"
+
+#include "opencv4/opencv2/highgui/highgui.hpp"
 
 int main()
 {
-    // About UAV iamge loading
-    std::string uav_img_path         = "../01_uav_images/orthophotos_100m/";
-    std::string uav_img_file_name    = "DJI_0378.JPG";
-    std::string uav_img_path_name    = uav_img_path + uav_img_file_name ;
-	cv::Mat img = cv::imread(uav_img_path_name);
+	// Get Image and Preprocess using UAV States.
+	ImagePreprocessing II;
+	cv::Mat m_mat_uav_img, m_mat_map_img;
+	std::vector<int> m_veci_target_resize_size;
 
-	if (img.empty()) {
-		std::cerr << "Image laod failed!" << std::endl;
+	// Get Preprocessing Image.
+	II.GetImages(m_mat_uav_img, m_mat_map_img);
+
+	if (m_mat_uav_img.empty() || m_mat_map_img.empty()) {
+		std::cerr << "Image load failed!" << std::endl;
 		return -1;
 	}
 
-	cv::namedWindow("image");
-	cv::imshow("image", img);
+	cv::imshow("Map Image", m_mat_map_img);
+	cv::imshow("UAV Image", m_mat_uav_img);
 	cv::waitKey();
 	cv::destroyAllWindows();
 	

@@ -13,17 +13,32 @@
 #ifndef __IMAGE_MATCHING__
 #define __IMAGE_MATCHING__
 
+#include <iostream>
+#include "opencv4/opencv2/core.hpp"
+
 class ImageMatching
 {
+public:
+    ImageMatching();
+    ~ImageMatching();
+public:
+    bool RunImageMatching();
+    bool SetImages();
+
+private:
+    /* Functions */
+    bool Init();
+    bool PreprocessUAVImg();
+    bool KeyPointExtractionSLIC();
+    bool DescriptorGenerationBRISK();
+    bool MatchImages();
 private:
     /* data */
-public:
-    ImageMatching(/* args */);
-    ~ImageMatching();
-
-public:
-    bool Init();
+    cv::Mat m_mat_uav_img;
+    cv::Mat m_mat_map_img;
 };
+
+
 
 
 
