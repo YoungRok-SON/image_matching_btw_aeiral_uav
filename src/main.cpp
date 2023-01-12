@@ -27,16 +27,17 @@ int main()
 
 	// Get Preprocessing Image.
 	II.GetImages(m_mat_uav_img, m_mat_map_img);
-
 	if (m_mat_uav_img.empty() || m_mat_map_img.empty()) {
 		std::cerr << "Image load failed!" << std::endl;
 		return -1;
 	}
-
 	cv::imshow("Map Image", m_mat_map_img);
 	cv::imshow("UAV Image", m_mat_uav_img);
 	cv::waitKey();
 	cv::destroyAllWindows();
+
+	// Match two images
+	ImageMatching IM;
 	
 	return 0;
 }
