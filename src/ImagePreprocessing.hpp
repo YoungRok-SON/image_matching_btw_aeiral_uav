@@ -13,8 +13,8 @@
 #ifndef __IMAGE_PREPROCESSING__
 #define __IMAGE_PREPROCESSING__
 
-#include "opencv4/opencv2/imgcodecs/imgcodecs.hpp"
-#include "opencv4/opencv2/imgproc/imgproc.hpp"
+#include "opencv2/imgcodecs/imgcodecs.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 class ImagePreprocessing
 {
@@ -26,11 +26,11 @@ private:
     bool m_b_initiated = true;
 
     // UAV - file path and name
-    std::string m_str_uav_img_path         = "../01_uav_images/orthophotos_100m/";
+    std::string m_str_uav_img_path         = "../../01_uav_images/orthophotos_100m/";
     std::string m_str_uav_img_file_name    = "DJI_0378.JPG";
     std::string m_str_uav_img_path_name    = m_str_uav_img_path + m_str_uav_img_file_name ;
     // Map - file path and name
-    std::string m_str_map_path         = "../02_map_images/";
+    std::string m_str_map_path         = "../../02_map_images/";
     std::string m_str_map_file_name    = "aerial_map_student_building_25cm.png";
     std::string m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
 
@@ -65,7 +65,7 @@ ImagePreprocessing::ImagePreprocessing(/* args */)
 {
     if( init() == false )
     {
-        m_b_initiated == false;
+        m_b_initiated = false;
         std::cerr << "ImagePreprocessing Class has failed to initiate." << std::endl;
     }
 }

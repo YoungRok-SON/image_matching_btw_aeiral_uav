@@ -16,7 +16,7 @@
 #include "ImagePreprocessing.hpp"
 #include "ImageMatching.hpp"
 
-#include "opencv4/opencv2/highgui/highgui.hpp"
+#include "opencv2/highgui/highgui.hpp"
 
 int main()
 {
@@ -35,8 +35,17 @@ int main()
 
 	cv::imshow("Map Image", m_mat_map_img);
 	cv::imshow("UAV Image", m_mat_uav_img);
-	cv::waitKey();
+	cv::waitKey(0);
 	cv::destroyAllWindows();
+
+	// Image Matching Class Initiation.
+	ImageMatching IM;
+	
+	// Extract key point and descriptor using SLIC and BRISK.
+	std::vector<cv::KeyPoint> vec_uav_key_points;
+	cv::Mat mat_uav_descriptors;
+	bool b_do_downsample = true;
+	IM.ComputeKeyDescriptorSlicBrisk(m_mat_uav_img, UAV,  b_do_downsample, vec_uav_key_points, mat_uav_descriptors);
 	
 	return 0;
 }
