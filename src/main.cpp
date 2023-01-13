@@ -36,7 +36,6 @@ int main()
 	cv::waitKey(0);
 	cv::destroyAllWindows();
 
-<<<<<<< HEAD
 	// Image Matching Class Initiation.
 	ImageMatching IM;
 	
@@ -45,10 +44,6 @@ int main()
 	cv::Mat mat_uav_descriptors;
 	bool b_do_downsample = true;
 	IM.ComputeKeyDescriptorSlicBrisk(m_mat_uav_img, UAV,  b_do_downsample, vec_uav_key_points, mat_uav_descriptors);
-=======
-	// Match two images
-	ImageMatching IM;
->>>>>>> 3269001ad0ced71cb36485629e9baea36357200a
 	
 	return 0;
 }
