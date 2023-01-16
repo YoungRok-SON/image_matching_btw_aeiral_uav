@@ -24,7 +24,7 @@ from skimage              import io
 
 from exif import Image
 #% About Map image Loading
-map_type = "konkuk_part" # 1. full_map, 2.konkuk_full, 3.konkuk_part
+map_type = "konkuk_full" # 1. full_map, 2.konkuk_full, 3.konkuk_part
 
 aerial_map_path      = "C:/Users/Alien08/aerial_map_based_illegal_detection/02_map_images/";
 if map_type == "full_map":
@@ -123,9 +123,9 @@ mask_inv = cv.bitwise_not(np.int8(croped_label_mask_uav))
 result_bg = cv.bitwise_and(tmp_aligned_uav_img, tmp_aligned_uav_img, mask=mask_inv)
 result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask_uav))
 result_uav = cv.add(result_bg, result_fg)
-# cv.imshow('SLIC Key points of UAV Image', result_uav)
-# cv.waitKey(0)
-# cv.destroyAllWindows()
+cv.imshow('SLIC Key points of UAV Image', result_uav)
+cv.waitKey(0)
+cv.destroyAllWindows()
 
 # Conver to Grayscale Image for remove useless SLIC point on image boudary.
 aligned_uav_img_gray = cv.cvtColor(aligned_uav_img, cv.COLOR_BGR2GRAY)
@@ -134,12 +134,12 @@ key_point_pixel_list_uav = [];
 count = 0;
 for row in range(num_slic_pixel_gap_uav, height_uav-num_slic_pixel_gap_uav):
     for col in range(num_slic_pixel_gap_uav, width_uav-num_slic_pixel_gap_uav):
-        if (croped_label_mask[row,col]       != 0                   and
+        if (croped_label_mask_uav[row,col]       != 0                   and
             aligned_uav_img_gray[row + num_slic_pixel_gap_uav,col ]   != 0 and 
             aligned_uav_img_gray[row - num_slic_pixel_gap_uav,col ]   != 0 and
             aligned_uav_img_gray[row, col - num_slic_pixel_gap_uav]   != 0 and
             aligned_uav_img_gray[row ,col + num_slic_pixel_gap_uav]   != 0 and
-            count%30 == 0 ): #%% Key point sampling
+            count%5 == 0 ): #%% Key point sampling
             key_point_pixel_list_uav.append([row, col]);
         count = count + 1;
 
@@ -160,7 +160,7 @@ cv.waitKey(0)
 cv.destroyAllWindows()
 
 #%% About Key point extraction using SLIC -Map
-num_superpixels_map        = 500; # Desired number of superpixels
+num_superpixels_map        = 1600; # Desired number of superpixels
 num_iterations_map         = 20;   # Number of pixel level iterations. The higher, the better quality
 prior_map                  = 1;   # For shape smoothing term. must be [0, 5]
 num_levels_map             = 3;  # Number of block levels. The more levels, the more accurate is the segmentation, but needs more memory and CPU time.
@@ -196,9 +196,9 @@ mask_inv = cv.bitwise_not(np.int8(croped_label_mask_map))
 result_bg = cv.bitwise_and(tmp_map_img, tmp_map_img, mask=mask_inv)
 result_fg = cv.bitwise_and(color_img, color_img, mask=np.int8(croped_label_mask_map))
 result_map = cv.add(result_bg, result_fg)
-# cv.imshow('SLIC Key points of Map Image', result)
-# cv.waitKey(0)
-# cv.destroyAllWindows()
+cv.imshow('SLIC Key points of Map Image', result_map)
+cv.waitKey(0)
+cv.destroyAllWindows()
 
 # Conver to Grayscale Image for remove useless SLIC point on image boudary.
 map_img_gray = cv.cvtColor(map_img, cv.COLOR_BGR2GRAY)
@@ -235,7 +235,7 @@ index_params= dict(algorithm = FLANN_INDEX_LSH,
                    table_number = 6, # 12
                    key_size = 12,     # 20
                    multi_probe_level = 1) #2
-search_params = dict(checks=50)   # or pass empty dictionary
+search_params = dict(checks=100)   # or pass empty dictionary
 
 flann = cv.FlannBasedMatcher(index_params,search_params)
 matches = flann.knnMatch(descriptor_uav,descriptor_map,k=num_closest_descriptors)
@@ -378,12 +378,12 @@ for key_point_idx in range(len(matches)):
                 
 print("Duration for matching filtering: ",  duration_feature_matching_filtering//60,"m ",duration_feature_matching_filtering%60,"s")
 print("Duration for matching refinement: ",  duration_template_matching//60,"m ",duration_template_matching%60,"s")
-# best_matching_map = map_img.copy();
-# cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
-# cv.imshow('Queried Pixel of UAV Image', aligned_uav_img);
-# cv.imshow('Matching Candidate from Map', best_matching_map);
-# cv.waitKey(0)
-# cv.destroyAllWindows()
+best_matching_map = map_img.copy();
+cv.circle(best_matching_map,(matching_candidate_pixels[matched_idx][0], matching_candidate_pixels[matched_idx][1]), 3, (0,0,255),-1)
+cv.imshow('Queried Pixel of UAV Image', aligned_uav_img);
+cv.imshow('Matching Candidate from Map', best_matching_map);
+cv.waitKey(0)
+cv.destroyAllWindows()
 #%% Matching result Visualization
 good_matches = tuple(best_matching)
 tuple_key_poins_uav = tuple(key_point_list_uav)
