@@ -18,7 +18,7 @@
 #include "opencv2/core.hpp" // Mat, keypoint, etc ... class
 #include "opencv2/ximgproc.hpp" // for SLIC algorithm
 #include "opencv2/highgui/highgui.hpp" // This header will be removed after debuging.
-
+#include "opencv2/imgproc/imgproc.hpp"
 
 enum ImgType
 {
