@@ -39,11 +39,36 @@ int main()
 	// Image Matching Class Initiation.
 	ImageMatching IM;
 	
-	// Extract key point and descriptor using SLIC and BRISK.
+	// Extract UAV image key point and descriptor using SLIC and BRISK.
 	std::vector<cv::KeyPoint> vec_uav_key_points;
 	cv::Mat mat_uav_descriptors;
-	bool b_do_downsample = true;
-	IM.ComputeKeyDescriptorSlicBrisk(m_mat_uav_img, UAV,  b_do_downsample, vec_uav_key_points, mat_uav_descriptors);
-	
+	bool b_do_downsample_uav = true;
+	IM.ComputeKeyDescriptorSlicBrisk(m_mat_uav_img, UAV,  b_do_downsample_uav, vec_uav_key_points, mat_uav_descriptors);
+
+	// Extact MAP image key point and descriptor using SLIC and BRISK.
+	std::vector<cv::KeyPoint> vec_map_key_points;
+	cv::Mat mat_map_descriptors;
+	bool b_do_downsample_map = false;
+	IM.ComputeKeyDescriptorSlicBrisk(m_mat_map_img, UAV,  b_do_downsample_map, vec_map_key_points, mat_map_descriptors);
+
+	// UAV Key point result visualization.
+	cv::Mat mat_uav_key_points_img;
+	IM.ShowKeypoints(m_mat_uav_img, vec_uav_key_points, mat_uav_key_points_img);
+	// Map Key point result visualization.
+	cv::Mat mat_map_key_points_img;
+	IM.ShowKeypoints(m_mat_map_img, vec_map_key_points,mat_map_key_points_img);
+
+	// Show Image
+	cv::imshow("MAP Keypoint Image", mat_map_key_points_img);
+	cv::imshow("UAV Keypoint Image", mat_uav_key_points_img);
+	cv::waitKey(0);
+	cv::destroyAllWindows();
+
+	// Image matching using two keypoints and descriptors.
+	IM.MatchImages(vec_uav_key_points, vec_map_key_points, mat_uav_descriptors, mat_map_descriptors);
+
+
+
+
 	return 0;
 }

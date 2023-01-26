@@ -97,21 +97,25 @@ BFMatcher = cv.BFMatcher(normType = cv.NORM_HAMMING,
                          crossCheck = True)
 
 # Matching descriptor vectors using Brute Force Matcher
-matches = BFMatcher.match(queryDescriptors = descriptors1,
-                          trainDescriptors = descriptors2)
+matches = BFMatcher.match(queryDescriptors = descriptors_uav,
+                          trainDescriptors = descriptors_map)
 
 # Sort them in the order of their distance
 matches = sorted(matches, key = lambda x: x.distance)
 
-# Draw first 15 matches
-feature_matching_result = cv.drawMatches(img1 = image1,
-                        keypoints1 = keypoints1,
-                        img2 = image2,
-                        keypoints2 = keypoints2,
-                        matches1to2 = matches[:15],
-                        outImg = None,
-                        flags = cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+for i in range(len(matches)):
+    # Draw first 15 matches
+    feature_matching_result = cv.drawMatches(img1 = aligned_uav_img,
+                                            keypoints1 = keypoints_uav,
+                                            img2 = map_img,
+                                            keypoints2 = keypoints_map,
+                                            matches1to2 = matches[i*10:(i+1)*10],
+                                            outImg = None,
+                                            flags = cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
+    cv.imshow('Matched Result', feature_matching_result);
+    cv.waitKey(0)
+    cv.destroyAllWindows()
 
 # #% FLANN-based feature matching
 # FLANN_INDEX_LSH = 6
@@ -132,9 +136,9 @@ feature_matching_result = cv.drawMatches(img1 = image1,
 # feature_matching_result = cv.drawMatchesKnn(aligned_uav_img, keypoints_uav, map_img, keypoints_map, good, None, flags=2) 
 # # feature_matching_result = cv.drawMatches(aligned_uav_img, tuple_key_poins_uav, map_img, tuple_key_poins_map, matches, None, flags=2)
 
-cv.imshow('Matched Result', feature_matching_result);
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow('Matched Result', feature_matching_result);
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 
 #%% 매칭 포인트가 다 생성되면 이미지 매칭 진행
