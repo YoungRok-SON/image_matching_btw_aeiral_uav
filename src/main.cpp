@@ -59,16 +59,16 @@ int main()
 	bool b_do_downsample_map = false;
 	IM.ComputeKeyDescriptorSlic(m_mat_map_img, MAP, b_do_downsample_map, SIFT, vec_map_key_points, mat_map_descriptors);
 
-	// UAV Key point result visualization.
-	cv::Mat mat_uav_key_points_img;
-	IM.ShowKeypoints(m_mat_uav_img, vec_uav_key_points, mat_uav_key_points_img);
-	// Map Key point result visualization.
-	cv::Mat mat_map_key_points_img;
-	IM.ShowKeypoints(m_mat_map_img, vec_map_key_points,mat_map_key_points_img);
 	
+	cv::Mat mat_uav_key_points_img;
+	cv::Mat mat_map_key_points_img;
 	// Vizualization for SLIC result
 	if (m_b_visualize == true)
 	{
+		// UAV Key point result visualization.
+		IM.ShowKeypoints(m_mat_uav_img, vec_uav_key_points, mat_uav_key_points_img);
+		// Map Key point result visualization.
+		IM.ShowKeypoints(m_mat_map_img, vec_map_key_points,mat_map_key_points_img);
 		cv::imshow("MAP Keypoint Image", mat_map_key_points_img);
 		cv::imshow("UAV Keypoint Image", mat_uav_key_points_img);
 		cv::waitKey(0);

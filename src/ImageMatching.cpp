@@ -59,8 +59,6 @@ bool ImageMatching::RunImageMatching()
 // Output: Keypoint Set vector.
 bool ImageMatching::ComputeKeyDescriptorSlic(cv::Mat in_img, ImgType in_img_type, bool do_downsample, DescriptorType in_descriptor_type, std::vector<cv::KeyPoint> &out_vec_key_points, cv::Mat &out_mat_descriptors )
 {
-    // 파라미터를 클래스 안쪽에 변수로 두는게 나을까 아니면 메인함수에서 가지고 있는게 나을까
-    // 이 변수는 클래스 안에 선언하고 이미지가 어떤것 인지만 알면되니까 이넘으로 넘겨주는게 나을듯?
     cv::Mat mat_slic_result, mat_slic_mask;
     int i_width, i_height, i_channels = in_img.channels();
     int i_display_mode = 0;
@@ -119,7 +117,7 @@ bool ImageMatching::ComputeKeyDescriptorSlic(cv::Mat in_img, ImgType in_img_type
         // Get contour to use as key point.
         seeds->getLabelContourMask(mat_slic_mask,false);
     }
-        // Extacto Key points using SLIC Boundary mask and image
+        // Extaction Key points using SLIC Boundary mask and image
         std::vector<cv::KeyPoint> vec_key_points;
         ExtractKeypoints(mat_gray_img, mat_slic_mask, vec_key_points);
         out_vec_key_points = vec_key_points;
@@ -232,8 +230,10 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
         if ( i_left_boundary <= i_keypoint_x && i_keypoint_x <= i_right_boundary && i_top_boundary  <= i_keypoint_y && i_keypoint_y <= i_bot_boundary )
         {
             vecp_interest_keypoints_loc.push_back(cv::Point2f(i_keypoint_x, i_keypoint_y));
+            std::cout << " keypoint x,y : " << i_keypoint_x << " , "<< i_keypoint_y << std::endl;
         }
     }
+
 
     if ( vecp_interest_keypoints_loc.empty() == true )
     {
@@ -249,18 +249,35 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
     for (size_t idx_query = 0; idx_query < in_vec_uav_keypoints.size(); idx_query++)
     {
         std::vector<float> query{in_vec_uav_keypoints[idx_query].pt.x, in_vec_uav_keypoints[idx_query].pt.y};
-        std::vector<int> veci_close_indices;
+        std::vector<int>   veci_close_indices;
         std::vector<float> vecf_distance;
-        kdtree.radiusSearch(query, veci_close_indices, vecf_distance, 20.0, 50, cv::flann::SearchParams(32));
+        kdtree.radiusSearch(query, veci_close_indices, vecf_distance, m_d_radius_of_pixel, m_i_max_num_near_points, cv::flann::SearchParams(m_i_kdtree_flann_search_param));
         /// Check if there is noting close near query.
         if(veci_close_indices.empty() == true)
         {
             std::cerr << "[RefineMatchedResult] There is no keypoint near query point." << std::endl;
             continue;
         }
+        
+        /// Extract point near query points
+        std::vector<cv::Point2f>  vecp2f_interest_keypoints;
+        std::vector<cv::KeyPoint> veckey_interest_keypoints;
+        for(size_t idx_interest_keypoints = 0; idx_interest_keypoints < veci_close_indices.size(); idx_interest_keypoints++)
+        {
+            int idx_keypoints = veci_close_indices[idx_interest_keypoints];
+            vecp2f_interest_keypoints.push_back( vecp_interest_keypoints_loc[idx_keypoints] );
+            veckey_interest_keypoints.push_back( cv::KeyPoint( vecp_interest_keypoints_loc[idx_keypoints], m_i_keypoint_size, m_f_keypoint_angle ) );
+            std::cout << "Point x, y: " <<  vecp_interest_keypoints_loc[idx_keypoints].x << ", " << vecp_interest_keypoints_loc[idx_keypoints].y << std::endl;
+        }
+
         if ( b_dbg_vis_close_key_point_extract == true )
         {
-            
+            cv::Mat mat_interest_keypoints_img;
+            in_map_img.copyTo(mat_interest_keypoints_img);
+            ShowKeypoints(mat_interest_keypoints_img, veckey_interest_keypoints, mat_interest_keypoints_img);
+            cv::imshow("[Refinement Matched Result] Interest Keypoints near query point", mat_interest_keypoints_img);
+            cv::waitKey(0);
+            cv::destroyAllWindows();
         }
     }
 

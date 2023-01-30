@@ -15,12 +15,20 @@
 
 #include <iostream>
 
-#include "opencv4/opencv2/core.hpp" // Mat, keypoint, etc ... class
-#include "opencv4/opencv2/ximgproc.hpp"
-#include "opencv4/opencv2/highgui/highgui.hpp" // This header will be removed after debuging.
-#include "opencv4/opencv2/imgproc/imgproc.hpp" // for cvtcolor function
-// #include "opencv4/opencv2/xfeatures2d.hpp" // for SIFT Feature
-#include "opencv4/opencv2/features2d/features2d.hpp"
+// #include "opencv4/opencv2/core.hpp" // Mat, keypoint, etc ... class
+// #include "opencv4/opencv2/ximgproc.hpp"
+// #include "opencv4/opencv2/highgui/highgui.hpp" // This header will be removed after debuging.
+// #include "opencv4/opencv2/imgproc/imgproc.hpp" // for cvtcolor function
+// // #include "opencv4/opencv2/xfeatures2d.hpp" // for SIFT Feature
+// #include "opencv4/opencv2/features2d/features2d.hpp"
+
+#include "opencv2/core.hpp"                    // Mat, keypoint, etc ... class
+#include "opencv2/ximgproc.hpp"                 
+#include "opencv2/highgui.hpp"                 // This header will be removed after debuging.
+#include "opencv2/imgproc.hpp"                 // For cvtcolor functions
+#include "opencv2/features2d/features2d.hpp"   // For SIFT Feature Extracting
+
+
 
 #include <time.h>
 
@@ -103,10 +111,14 @@ private: /* Variables */
     double m_d_sigma          = 1.6;
     // Descriptor matching parameters
 
-    int   m_i_num_one_to_many        = 500; 
-    int   m_i_num_keypoint_threshold = 1000;
+    int    m_i_num_one_to_many        = 500; 
+    int    m_i_num_keypoint_threshold = 1000;
     // Histogram voting for geopraphical constriant
-    int   m_i_num_pixels_in_bin      = 1;
+    int    m_i_num_pixels_in_bin      = 1;
+    // Refinement matched result using template matching
+    int    m_i_kdtree_flann_search_param = 50;
+    double m_d_radius_of_pixel     = 20.0;       // 찾을 경계의 반경
+    int    m_i_max_num_near_points = 50;  // 찾을 주변점의 최대 개수
 
 
 
