@@ -189,8 +189,11 @@ bool ImageMatching::MatchImages(cv::Mat in_uav_img, cv::Mat in_map_img,
     std::cout << "UAV keypoint from mache result: " << vvec_knn_matches.size() << std::endl;
     std::cout << "Map keypoint from mache result: " << vvec_knn_matches[0].size() << std::endl;
     // Histogram voting using geographical(지리적) infomation.
+    start = std::clock();
     cv::Point p_delta_translation;
     GetCenterOfGeographyConstraint(vvec_knn_matches, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation);
+    end = std::clock();
+    std::cout << "Histogram voting duration: " << duration/CLOCKS_PER_SEC << "s." << std::endl;
     // Matching refinement using Template matching with Matching cadidates.
     std::vector<cv::DMatch> vec_refined_mathing_result;
     RefineMatchedResult(in_uav_img, in_map_img, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation, vec_refined_mathing_result);
@@ -221,7 +224,8 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
     }
 
     // Get interest keypoints from whole key point vector.
-    std::vector<cv::Point2f> vecp_interest_keypoints_loc;
+    std::vector<cv::Point2i> vecp_interest_keypoints_loc;
+
     for ( int idx_keypoint_map = 0; idx_keypoint_map < in_vec_map_keypoints.size();  idx_keypoint_map++)
     {
         int i_keypoint_x = in_vec_map_keypoints[idx_keypoint_map].pt.x;
@@ -229,64 +233,84 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
         
         if ( i_left_boundary <= i_keypoint_x && i_keypoint_x <= i_right_boundary && i_top_boundary  <= i_keypoint_y && i_keypoint_y <= i_bot_boundary )
         {
-            vecp_interest_keypoints_loc.push_back(cv::Point2f(i_keypoint_x, i_keypoint_y));
-            std::cout << " keypoint x,y : " << i_keypoint_x << " , "<< i_keypoint_y << std::endl;
+            vecp_interest_keypoints_loc.push_back(cv::Point2i(i_keypoint_x, i_keypoint_y));
+            std::cout << "interest Keypoints x,y: " << i_keypoint_x << ", " << i_keypoint_y << std::endl;
         }
     }
-
 
     if ( vecp_interest_keypoints_loc.empty() == true )
     {
         std::cerr << "interest boundary is empty." << std::endl;
         return false;
     }
-
-    // Generate KD-tree
-    cv::flann::KDTreeIndexParams kdtree_index_params;
-    cv::flann::Index kdtree (cv::Mat(vecp_interest_keypoints_loc).reshape(1), kdtree_index_params);
     
     // Search and push back to vector
     for (size_t idx_query = 0; idx_query < in_vec_uav_keypoints.size(); idx_query++)
     {
-        std::vector<float> query{in_vec_uav_keypoints[idx_query].pt.x, in_vec_uav_keypoints[idx_query].pt.y};
-        std::vector<int>   veci_close_indices;
-        std::vector<float> vecf_distance;
-        kdtree.radiusSearch(query, veci_close_indices, vecf_distance, m_d_radius_of_pixel, m_i_max_num_near_points, cv::flann::SearchParams(m_i_kdtree_flann_search_param));
-        /// Check if there is noting close near query.
-        if(veci_close_indices.empty() == true)
+        int i_query_keypoint_x = in_vec_uav_keypoints[idx_query].pt.x;
+        int i_query_keypoint_y = in_vec_uav_keypoints[idx_query].pt.y;
+        int i_boudnary_left    = i_query_keypoint_x - m_d_radius_of_pixel - in_translation.x;
+        int i_boudnary_right   = i_query_keypoint_x + m_d_radius_of_pixel - in_translation.x;
+        int i_boudnary_top     = i_query_keypoint_y - m_d_radius_of_pixel - in_translation.y;
+        int i_boudnary_bot     = i_query_keypoint_y + m_d_radius_of_pixel - in_translation.y;
+
+        std::vector<cv::Point2i> vecp2i_near_keypoint_loc;
+        std::vector<cv::KeyPoint> veckey_near_keypoints;
+        int i_biggest_x  = i_query_keypoint_x - in_translation.x;
+        int i_smallest_x = i_query_keypoint_x - in_translation.x;
+        int i_biggest_y  = i_query_keypoint_y - in_translation.y;
+        int i_smallest_y = i_query_keypoint_y - in_translation.y;
+        for (int idx_near_keypoint = 0; idx_near_keypoint < vecp_interest_keypoints_loc.size(); idx_near_keypoint++)
         {
-            std::cerr << "[RefineMatchedResult] There is no keypoint near query point." << std::endl;
-            continue;
+            int i_near_point_x = vecp_interest_keypoints_loc[idx_near_keypoint].x;
+            int i_near_point_y = vecp_interest_keypoints_loc[idx_near_keypoint].y;
+            
+            if( i_boudnary_left < i_near_point_x && i_near_point_x < i_boudnary_right && i_boudnary_top < i_near_point_y && i_near_point_y < i_boudnary_bot)
+            {
+                vecp2i_near_keypoint_loc.push_back( cv::Point2i( i_near_point_x, i_near_point_y) );
+                veckey_near_keypoints.push_back( cv::KeyPoint( cv::Point( i_near_point_x, i_near_point_y), m_i_keypoint_size, m_f_keypoint_angle ) );
+                if( i_biggest_x < i_near_point_x ) // bigest x
+                    i_biggest_x = i_near_point_x;
+                if( i_near_point_x < i_smallest_x ) // smallest x
+                    i_smallest_x = i_near_point_x;
+                if( i_biggest_y < i_near_point_y ) // bigest y
+                    i_biggest_y = i_near_point_y;
+                if( i_near_point_y < i_smallest_y ) // smallest y
+                    i_smallest_y = i_near_point_y;
+            }
         }
+        std::cout << "biggest  near key point x: " << i_biggest_x  << std::endl;
+        std::cout << "biggest  near key point y: " << i_biggest_y  << std::endl;
+        std::cout << "smallest near key point x: " << i_smallest_x << std::endl;
+        std::cout << "smallest near key point y: " << i_smallest_y << std::endl;
         
-        /// Extract point near query points
-        std::vector<cv::Point2f>  vecp2f_interest_keypoints;
-        std::vector<cv::KeyPoint> veckey_interest_keypoints;
-        for(size_t idx_interest_keypoints = 0; idx_interest_keypoints < veci_close_indices.size(); idx_interest_keypoints++)
+        if( vecp2i_near_keypoint_loc.empty() == true )
         {
-            int idx_keypoints = veci_close_indices[idx_interest_keypoints];
-            vecp2f_interest_keypoints.push_back( vecp_interest_keypoints_loc[idx_keypoints] );
-            veckey_interest_keypoints.push_back( cv::KeyPoint( vecp_interest_keypoints_loc[idx_keypoints], m_i_keypoint_size, m_f_keypoint_angle ) );
-            std::cout << "Point x, y: " <<  vecp_interest_keypoints_loc[idx_keypoints].x << ", " << vecp_interest_keypoints_loc[idx_keypoints].y << std::endl;
+            std::cout << "[RefineMatchedResult] There is no near keypoints." << std::endl;
+            continue;
         }
 
         if ( b_dbg_vis_close_key_point_extract == true )
         {
             cv::Mat mat_interest_keypoints_img;
+            cv::Mat mat_query_keypoints_img;
             in_map_img.copyTo(mat_interest_keypoints_img);
-            ShowKeypoints(mat_interest_keypoints_img, veckey_interest_keypoints, mat_interest_keypoints_img);
+            in_uav_img.copyTo(mat_query_keypoints_img);
+            ShowKeypoints(mat_interest_keypoints_img, veckey_near_keypoints, mat_interest_keypoints_img);
+            cv::circle(mat_query_keypoints_img, cv::Point(i_query_keypoint_x, i_query_keypoint_y),5,cv::Scalar(0,0,255),1,-1,0);
             cv::imshow("[Refinement Matched Result] Interest Keypoints near query point", mat_interest_keypoints_img);
+            cv::imshow("[Refinement Matched Result] Query point", mat_query_keypoints_img);
             cv::waitKey(0);
             cv::destroyAllWindows();
         }
-    }
-
     /* Refine matching result using Template matching */
     // Get Base image (include all candidate keypoints)
-
+    
     // Get score and save into container
 
     // Get Best matching and save into container
+    }
+
     
     end = std::clock();
     duration = (double)(end-start);
@@ -307,7 +331,7 @@ bool ImageMatching::ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_sli
         for(int idx_x = 2; idx_x < in_mat_slic_mask.cols-2; idx_x++)
         {
             int i_element      = Mi[idx_x];
-            int i_left_pixel   = ptr_gray_img_row_mid   [idx_x - m_i_boundary_gap]; 
+            int i_left_pixel   = ptr_gray_img_row_mid   [idx_x - m_i_boundary_gap];
             int i_right_pixel  = ptr_gray_img_row_mid   [idx_x + m_i_boundary_gap];
             int i_upper_pixel  = ptr_gray_img_row_hight [idx_x                   ];
             int i_bottom_pixel = ptr_gray_img_row_bottom[idx_x                   ]; 
@@ -315,11 +339,11 @@ bool ImageMatching::ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_sli
                  i_left_pixel   != 0    &&
                  i_right_pixel  != 0    &&
                  i_upper_pixel  != 0    &&
-                 i_bottom_pixel != 0      ) // SLIC Boundary output is 255 which is max of uchar. but why?
+                 i_bottom_pixel != 0     ) // SLIC Boundary output is 255 which is max of uchar. but why?
             {
                 // Generate Key point object and add to vector.
-                cv::Point2f slick_point(idx_x, idx_y);
-                cv::KeyPoint slic_key_point(slick_point, m_i_keypoint_size, m_f_keypoint_angle);
+                cv::Point    p_slick_point(idx_x, idx_y);
+                cv::KeyPoint slic_key_point(p_slick_point, m_i_keypoint_size, m_f_keypoint_angle);
                 out_vector_keypoints.push_back(slic_key_point);
             }
         }

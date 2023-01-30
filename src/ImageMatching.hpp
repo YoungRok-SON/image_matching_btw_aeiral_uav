@@ -102,7 +102,6 @@ private: /* Variables */
     int   m_i_threshold      = 30;
     int   m_i_octaves        = 4;
     float m_f_pattern_scale  = 1.0f;
-    int   m_i_boundary_gap   = 5;
     /// for sift
     int    m_i_n_feature      = 0;
     int    m_i_n_octav_layers = 3;
@@ -117,14 +116,14 @@ private: /* Variables */
     int    m_i_num_pixels_in_bin      = 1;
     // Refinement matched result using template matching
     int    m_i_kdtree_flann_search_param = 50;
-    double m_d_radius_of_pixel     = 20.0;       // 찾을 경계의 반경
-    int    m_i_max_num_near_points = 50;  // 찾을 주변점의 최대 개수
-
+    int    m_d_radius_of_pixel           = 20;   // 찾을 경계의 반경
+    int    m_i_max_num_near_points       = 50;     // 찾을 주변점의 최대 개수
+    int   m_i_boundary_gap   = m_d_radius_of_pixel*2;
 
 
 public: /* Variables for Debuging */
     cv::Point2i m_p2i_trans;
-    bool b_dbg_vis_close_key_point_extract = true;
+    bool b_dbg_vis_close_key_point_extract = false;
     
 };
 
