@@ -234,7 +234,7 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
             vecp_interest_keypoints_loc.push_back(cv::Point2f(i_keypoint_x, i_keypoint_y));
         }
     }
-    
+
     if ( vecp_interest_keypoints_loc.empty() == true )
     {
         std::cerr << "interest boundary is empty." << std::endl;
@@ -242,7 +242,6 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
     }
 
     // Generate KD-tree
-
     cv::flann::KDTreeIndexParams kdtree_index_params;
     cv::flann::Index kdtree (cv::Mat(vecp_interest_keypoints_loc).reshape(1), kdtree_index_params);
     

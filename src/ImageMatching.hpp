@@ -116,8 +116,4 @@ public: /* Variables for Debuging */
     
 };
 
-
-
-
-
 #endif
