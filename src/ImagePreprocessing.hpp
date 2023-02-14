@@ -13,8 +13,13 @@
 #ifndef __IMAGE_PREPROCESSING__
 #define __IMAGE_PREPROCESSING__
 
-#include "opencv2/imgcodecs/imgcodecs.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+/* Opencv lib */
+#include <opencv2/imgcodecs/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+/* GDAL lib */
+#include <gdal/gdal_priv.h>
+#include <gdal/gdal.h>
+#include <gdal/cpl_conv.h>
 
 class ImagePreprocessing
 {
@@ -31,8 +36,11 @@ private:
     std::string m_str_uav_img_path_name    = m_str_uav_img_path + m_str_uav_img_file_name ;
     // Map - file path and name
     std::string m_str_map_path         = "../02_map_images/";
-    std::string m_str_map_file_name    = "aerial_map_konkuk_25cm.png";
+    std::string m_str_map_file_name    = "geo_tagged_ortho_image_konkuk.tif";
     std::string m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
+
+    // GDAL Variables
+    GDALDataset *m_ptr_dataset;
 
     // File Metadata
     float m_f_altitude_uav;     
@@ -110,13 +118,28 @@ bool ImagePreprocessing::init()
 bool ImagePreprocessing::ImportImages()
 {
     m_mat_uav_img = cv::imread(m_str_uav_img_path_name, cv::IMREAD_COLOR);
-    m_mat_map_img = cv::imread(m_str_map_img_path_name, cv::IMREAD_COLOR);
+    
+    // String to Char arry
+    const int i_len_map_path_name = m_str_map_img_path_name.length();
+    char* chararr_map_path_name = new char [i_len_map_path_name + 1];
+    strcpy(chararr_map_path_name, m_str_map_img_path_name.c_str());
+    
+    // Register drivers
+    GDALRasterImage gdal_map_img(m_str_map_img_path_name);
+    
+    m_ptr_dataset = (GDALDataset *) GDALOpen (chararr_map_path_name, GA_ReadOnly);
 
-    if(m_mat_uav_img.empty() || m_mat_map_img.empty())
+
+    
+    if(m_mat_uav_img.empty() || m_ptr_dataset == NULL)
     {
         std::cerr << "Image import fail." << std::endl;
         return false;
     }
+
+
+
+    delete[] chararr_map_path_name;
     return true;
 }
 

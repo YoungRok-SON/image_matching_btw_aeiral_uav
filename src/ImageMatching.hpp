@@ -28,8 +28,7 @@
 #include "opencv2/imgproc.hpp"                 // For cvtcolor functions
 #include "opencv2/features2d/features2d.hpp"   // For SIFT Feature Extracting
 
-
-
+#include <map>
 #include <time.h>
 
 enum ImgType
@@ -118,7 +117,8 @@ private: /* Variables */
     int    m_i_kdtree_flann_search_param = 50;
     int    m_d_radius_of_pixel           = 20;   // 찾을 경계의 반경
     int    m_i_max_num_near_points       = 50;     // 찾을 주변점의 최대 개수
-    int   m_i_boundary_gap   = m_d_radius_of_pixel*2;
+    int    m_i_boundary_gap              = m_d_radius_of_pixel * 2;
+    int    m_i_template_size             = 25;
 
 
 public: /* Variables for Debuging */
