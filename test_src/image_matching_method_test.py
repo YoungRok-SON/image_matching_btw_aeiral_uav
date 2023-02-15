@@ -22,11 +22,11 @@ from skimage              import io
 
 from exif import Image
 #% About Map image Loading
-map_type = "konkuk_part" # 1. full_map, 2.konkuk_full, 3.konkuk_part
+map_type = "full_map" # 1. full_map, 2.konkuk_full, 3.konkuk_part
 
-aerial_map_path      = "C:/Users/Alien08/aerial_map_based_illegal_detection/02_map_images/";
+aerial_map_path      = "../02_map_images/";
 if map_type == "full_map":
-    aerial_map_file_name = "aerial_orthomap_konkuk_25cm.tif";
+    aerial_map_file_name = "geo_tagged_ortho_image_konkuk_latlon.tif";
 elif map_type == "konkuk_full":
     aerial_map_file_name = "aerial_map_konkuk_25cm.png";
 else: # map_type == "konkuk_part"
@@ -34,7 +34,7 @@ else: # map_type == "konkuk_part"
         
 aerial_map_path_name = aerial_map_path + aerial_map_file_name;
 # About UAV iamge loading
-uav_img_path         = "C:/Users/Alien08/aerial_map_based_illegal_detection/01_uav_images/orthophotos_100m/";
+uav_img_path         = "../01_uav_images/orthophotos_100m/";
 uav_img_file_name    = "DJI_0378.JPG";
 uav_img_path_name    = uav_img_path + uav_img_file_name ;
 
@@ -56,6 +56,7 @@ target_size_uav_img  = np.int16(np.array([width_image, height_image]) * resize_f
 
 #%% Load Aerial Map data
 map_img     = cv.imread(aerial_map_path_name,cv.IMREAD_COLOR);
+map_img     = cv.imread(aerial_map_path_name,cv.IMREAD_LOAD_GDAL | cv.IMREAD_COLOR);
 # imgplot_map = plt.imshow(map_img);
 # cv.imshow('Map Image', map_img);
 # cv.waitKey(0)

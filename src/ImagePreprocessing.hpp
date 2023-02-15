@@ -18,7 +18,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 /* GDAL lib */
 #include <gdal/gdal_priv.h>
-#include <gdal/gdal.h>
 #include <gdal/cpl_conv.h>
 
 class ImagePreprocessing
@@ -39,8 +38,18 @@ private:
     std::string m_str_map_file_name    = "geo_tagged_ortho_image_konkuk.tif";
     std::string m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
 
-    // GDAL Variables
-    GDALDataset *m_ptr_dataset;
+    // UAV Position and Attitude info
+    double m_d_uav_lon     = 127.4407996999999974;
+    double m_d_uav_lat     = 37.32328912000000127;
+    double m_d_uav_roll    = 0.0;
+    double m_d_uav_pitch   = 0.0;
+    double m_d_uav_azimuth = 0.0;
+
+    // Map Boundary Coordinate - WGS84(Lon(N), Lat(E))
+    cv::Point2d m_p2d_top_right_coordinate {37.5455255124, 127.0825739840};
+    cv::Point2d m_p2d_top_left_coordinate  {37.5455290267, 127.0744197768};
+    cv::Point2d m_p2d_bot_right_coordinate {37.5387993632, 127.0825667674};
+    cv::Point2d m_p2d_bot_left_coordinate  {37.5388066215, 127.0744331813};
 
     // File Metadata
     float m_f_altitude_uav;     
@@ -118,20 +127,11 @@ bool ImagePreprocessing::init()
 bool ImagePreprocessing::ImportImages()
 {
     m_mat_uav_img = cv::imread(m_str_uav_img_path_name, cv::IMREAD_COLOR);
-    
-    // String to Char arry
-    const int i_len_map_path_name = m_str_map_img_path_name.length();
-    char* chararr_map_path_name = new char [i_len_map_path_name + 1];
-    strcpy(chararr_map_path_name, m_str_map_img_path_name.c_str());
-    
-    // Register drivers
-    GDALRasterImage gdal_map_img(m_str_map_img_path_name);
-    
-    m_ptr_dataset = (GDALDataset *) GDALOpen (chararr_map_path_name, GA_ReadOnly);
+    m_mat_map_img = cv::imread(m_str_map_img_path_name, cv::IMREAD_COLOR);
 
 
     
-    if(m_mat_uav_img.empty() || m_ptr_dataset == NULL)
+    if(m_mat_uav_img.empty() || m_mat_map_img.empty() )
     {
         std::cerr << "Image import fail." << std::endl;
         return false;
@@ -139,7 +139,6 @@ bool ImagePreprocessing::ImportImages()
 
 
 
-    delete[] chararr_map_path_name;
     return true;
 }
 
