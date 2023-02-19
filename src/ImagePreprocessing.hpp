@@ -14,11 +14,8 @@
 #define __IMAGE_PREPROCESSING__
 
 /* Opencv lib */
-#include <opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-/* GDAL lib */
-#include <gdal/gdal_priv.h>
-#include <gdal/cpl_conv.h>
+#include <opencv4/opencv2/imgcodecs/imgcodecs.hpp>
+#include <opencv4/opencv2/imgproc/imgproc.hpp>
 
 class ImagePreprocessing
 {
@@ -35,15 +32,15 @@ private:
     std::string m_str_uav_img_path_name    = m_str_uav_img_path + m_str_uav_img_file_name ;
     // Map - file path and name
     std::string m_str_map_path         = "../02_map_images/";
-    std::string m_str_map_file_name    = "geo_tagged_ortho_image_konkuk.tif";
+    std::string m_str_map_file_name    = "geo_tagged_ortho_image_konkuk_latlon.tif";
     std::string m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
 
     // UAV Position and Attitude info
-    double m_d_uav_lon     = 127.4407996999999974;
-    double m_d_uav_lat     = 37.32328912000000127;
-    double m_d_uav_roll    = 0.0;
-    double m_d_uav_pitch   = 0.0;
-    double m_d_uav_azimuth = 0.0;
+    double m_d_uav_lon;
+    double m_d_uav_lat;
+    double m_d_uav_roll;
+    double m_d_uav_pitch;
+    double m_d_uav_azimuth;
 
     // Map Boundary Coordinate - WGS84(Lon(N), Lat(E))
     cv::Point2d m_p2d_top_right_coordinate {37.5455255124, 127.0825739840};
@@ -109,6 +106,21 @@ bool ImagePreprocessing::init()
     m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
     m_veci_target_size_uav_img  = { int(m_f_width_image_uav * m_f_resize_factor), int(m_f_height_image_uav * m_f_resize_factor)};
     m_f_uav_yaw                 = -130.0;
+
+    m_d_uav_lon     = 127.0779322777;
+    m_d_uav_lat     = 37.54324908333;
+    m_d_uav_roll    = 0.0;
+    m_d_uav_pitch   = 0.0;
+    m_d_uav_azimuth = 0.0;
+
+    // x-axis: Lon, y-axis: Lat
+    m_p2d_top_right_coordinate.x = 37.5455255124;
+    m_p2d_top_right_coordinate.y = 127.0825739840;
+    m_p2d_top_left_coordinate.x  = 37.5455290267;
+    m_p2d_top_left_coordinate.y  = 127.0744197768;
+    m_p2d_bot_right_coordinate.x = 37.5387993632;
+    m_p2d_bot_left_coordinate.y  = 127.0744331813;
+
     std::cout << "UAV Altitude         : " << m_f_altitude_uav << std::endl;
     std::cout << "UAV focal length     : " << m_f_focal_length_uav << std::endl;
     std::cout << "UAV image width      : " << m_f_width_image_uav << std::endl;
@@ -129,15 +141,11 @@ bool ImagePreprocessing::ImportImages()
     m_mat_uav_img = cv::imread(m_str_uav_img_path_name, cv::IMREAD_COLOR);
     m_mat_map_img = cv::imread(m_str_map_img_path_name, cv::IMREAD_COLOR);
 
-
-    
     if(m_mat_uav_img.empty() || m_mat_map_img.empty() )
     {
         std::cerr << "Image import fail." << std::endl;
         return false;
     }
-
-
 
     return true;
 }
