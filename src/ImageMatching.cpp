@@ -191,6 +191,8 @@ bool ImageMatching::MatchImages(cv::Mat in_uav_img, cv::Mat in_map_img,
     // Histogram voting using geographical(지리적) infomation.
     start = std::clock();
     cv::Point p_delta_translation;
+    // Todo
+    // this part can be replaced by drone coordinate..?
     GetCenterOfGeographyConstraint(vvec_knn_matches, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation);
     end = std::clock();
     std::cout << "Histogram voting duration: " << duration/CLOCKS_PER_SEC << "s." << std::endl;
@@ -236,32 +238,40 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
             vecp_interest_keypoints_loc.push_back(cv::Point2i(i_keypoint_x, i_keypoint_y));
             std::cout << "interest Keypoints x,y: " << i_keypoint_x << ", " << i_keypoint_y << std::endl;
         }
-    }
+    } // 여기까지는 전체 맵 키포인트에서 필요한 부분만 일차적으로 추출해서 벡터에 넣어놓는 과정
 
     if ( vecp_interest_keypoints_loc.empty() )
     {
         std::cerr << "interest boundary is empty." << std::endl;
         return false;
     }
-    
+
+    std::map<int, cv::DMatch> mapidm_refined_matching;
     // Search and push back to vector
-    for (size_t idx_query = 0; idx_query < in_vec_uav_keypoints.size(); idx_query++)
+    for (size_t idx_query = 0; idx_query < in_vec_uav_keypoints.size(); idx_query++) // UAV 이미지에 있는 키포인트만큼 반복
     {
         int i_query_keypoint_x = in_vec_uav_keypoints[idx_query].pt.x;
         int i_query_keypoint_y = in_vec_uav_keypoints[idx_query].pt.y;
-        int i_boudnary_left    = i_query_keypoint_x - m_d_radius_of_pixel - in_translation.x;
+        // UAV 키포인트 주변의 Map 키포인트를 걸러내기 위한 바운더리 설정
+        int i_boudnary_left    = i_query_keypoint_x - m_d_radius_of_pixel - in_translation.x; 
         int i_boudnary_right   = i_query_keypoint_x + m_d_radius_of_pixel - in_translation.x;
         int i_boudnary_top     = i_query_keypoint_y - m_d_radius_of_pixel - in_translation.y;
         int i_boudnary_bot     = i_query_keypoint_y + m_d_radius_of_pixel - in_translation.y;
-        int i_ncc_score = 0;
-        std::map<int, cv::DMatch> mapidm_refined_matching;
-        for (int idx_near_keypoint = 0; idx_near_keypoint < vecp_interest_keypoints_loc.size(); idx_near_keypoint++)
+        
+
+        
+        // 일차적으로 추출한 Map 키포인트들 중 가까운 애들만 찾는 과정
+        for (int idx_near_keypoint = 0; idx_near_keypoint < vecp_interest_keypoints_loc.size(); idx_near_keypoint++) 
         {
+            // 일차적으로 뽑아 놓은 Map 키포인트 중 하나의 위치 정보 추출
             int i_near_point_x = vecp_interest_keypoints_loc[idx_near_keypoint].x;
             int i_near_point_y = vecp_interest_keypoints_loc[idx_near_keypoint].y;
             
+            // 바운더리 검사해서 바운더리 안쪽에 있는지 검사
             if( i_boudnary_left < i_near_point_x && i_near_point_x < i_boudnary_right && i_boudnary_top < i_near_point_y && i_near_point_y < i_boudnary_bot)
             {
+                // 지정된 바운더리 안쪽에 있는 점이라면 탬플릿 매칭
+                int i_ncc_score = 0;
                 for (int idx_row = -m_i_template_size; idx_row <= m_i_template_size*2; idx_row++)
                 {
                     const double* ptr_elem_uav = in_uav_img.ptr<double>( i_query_keypoint_x + idx_row);
@@ -271,11 +281,13 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
                         i_ncc_score =+         ptr_elem_uav[i_query_keypoint_y + idx_col] * ptr_elem_map[i_near_point_y + idx_col] /
                                         cv::sqrt(ptr_elem_uav[i_query_keypoint_y + idx_col] * ptr_elem_uav[i_query_keypoint_y + idx_col] *
                                                  ptr_elem_map[i_near_point_y + idx_col] * ptr_elem_map[i_near_point_y + idx_col]);
+                        // 한 키포인트에 대해 탬플릿 매칭이 끝나면 mapidm_refined_matching 맵에 스코어 값과 매칭 정보를 같이 넣음
+                        // Map에 넣으면 자동으로 정렬
                     }
                 }
+                // 하나의 UAV 키포인트에 대해 검사가 다 끝나면 점수가 가장 높은 점을 Dmatch로 만들어서 저장
+
             }
-            // cv::DMatch
-            // mapidm_refined_matching.insert();
         }
         // std::cout << "biggest  near key point x: " << i_biggest_x  << std::endl;
         // std::cout << "biggest  near key point y: " << i_biggest_y  << std::endl;
@@ -347,7 +359,7 @@ bool ImageMatching::ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_sli
     }
     return true;
 }
-
+// Find Geographical constraints using one to many constrainst
 bool ImageMatching::GetCenterOfGeographyConstraint( std::vector<std::vector<cv::DMatch>> in_vvec_dmatch_reuslt,
                                                     std::vector<cv::KeyPoint> in_vec_uav_keypoints,
                                                     std::vector<cv::KeyPoint> in_vec_map_keypoints,

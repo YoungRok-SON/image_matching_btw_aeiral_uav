@@ -88,7 +88,7 @@ private: /* Variables */
     bool  m_b_uav_double_step        = false;
     int   m_i_uav_num_iterations     = 4;
 
-    int   m_i_map_num_superpixels    = 3000;
+    int   m_i_map_num_superpixels    = 1000;
     int   m_i_map_num_levels         = 3;
     int   m_i_map_prior              = 1;
     int   m_i_map_num_histogram_bins = 10;

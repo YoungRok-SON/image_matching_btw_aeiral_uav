@@ -23,12 +23,14 @@ public:
     ImagePreprocessing(/* args */);
     ~ImagePreprocessing();
 
-    // UAV Position and Attitude info
+    // UAV Position and Attitude info 
+    // For Debugging need to be private
     cv::Point2d m_p2d_uav_lonlat;
     cv::Point2d m_p2d_uav_lonlat_relative;
     cv::Point3d m_p3d_uav_attitude;
     cv::Point2d m_p2d_range_lonlat;
 
+    float m_f_altitude_uav;     // For Debugging need to be private
 private:
     /* Variables */
     bool m_b_initiated = true;
@@ -42,20 +44,19 @@ private:
     std::string m_str_map_file_name;
     std::string m_str_map_img_path_name;
 
-
     // Map Boundary Coordinate - WGS84(Lon(N), Lat(E))
     cv::Point2d m_p2d_top_right_coordinate;
     cv::Point2d m_p2d_top_left_coordinate;
     cv::Point2d m_p2d_bot_right_coordinate;
     cv::Point2d m_p2d_bot_left_coordinate;
-
+    int         m_i_submap_margin; // Margin for rotated uav image.
 
     // File Metadata
-    float m_f_altitude_uav;     
     float m_f_focal_length_uav;
     float m_f_width_image_uav;
     float m_f_height_image_uav;
     float m_f_width_ccd_sensor;
+    float m_f_height_ccd_sensor;
     float m_f_gsd_uav_img;   
     float m_f_gsd_aerial_map;
     float m_f_resize_factor;
@@ -108,10 +109,11 @@ bool ImagePreprocessing::init()
     }
 
     m_f_altitude_uav            = 10220.0;          // [m to cm]
-    m_f_focal_length_uav        = 0.45 ;            // [mm to cm]
+    m_f_focal_length_uav        = 0.4 ;             // [mm to cm]
     m_f_width_image_uav         = 4000.0;           // [px]
     m_f_height_image_uav        = 3000.0;           // [px]
-    m_f_width_ccd_sensor        = 6.4/10;           // [mm to cm] width of ccd sensor: check spec of camera.
+    m_f_width_ccd_sensor        = 6.4/10;           // [mm to cm] width  of ccd sensor: check spec of camera.
+    m_f_height_ccd_sensor       = 4.8/10;           // [mm to cm] height of ccd sensor: check spec of camera.
     m_f_gsd_uav_img             = m_f_altitude_uav*m_f_width_ccd_sensor/
                                   (m_f_focal_length_uav*m_f_width_image_uav); // [cm]
     m_f_gsd_aerial_map          = 25;                                         // [cm] ground sampling distance: Check the information from the institude of aerial image.
@@ -137,6 +139,7 @@ bool ImagePreprocessing::init()
 
     m_p2d_uav_lonlat_relative.x = m_p2d_uav_lonlat.x - m_p2d_bot_left_coordinate.x;
     m_p2d_uav_lonlat_relative.y = m_p2d_uav_lonlat.y - m_p2d_bot_left_coordinate.y;
+    m_i_submap_margin = 1.7;
 
     std::cout << "UAV Altitude         : " << m_f_altitude_uav << std::endl;
     std::cout << "UAV focal length     : " << m_f_focal_length_uav << std::endl;
@@ -238,24 +241,27 @@ bool ImagePreprocessing::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, 
     out_p_submap_center.x = (int)d_submap_center_lat; 
     out_p_submap_center.y = (int)d_submap_center_lon;
     return true;
-    // To Do
-    // The center location is weired...
-    // Need to figure out why is the location has weired location.
-    // Candidate1: wrong map coordinate
-    // Candidate2: Wrong Drone GPS
-    // Candidate3: Wrong Conversion from EXIF data.
 }
 
 
 // Get Submap from original img using submap ceneter and size parameter. The submap size is automatically adjusted by UAV altitude.
 // Input : Original Image, Submap center, uav altitude
 // Output: Submap for image matching
-bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2d_submap_center, double in_uav_altitude, cv::Mat &out_submap_img)
+bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2i_submap_center, double in_uav_altitude, cv::Mat &out_submap_img)
 {
     
-    // 잘라올 크기 정의
+    // Define the size of submap around center of submap.
+    double d_half_distance_width   = m_f_width_ccd_sensor/2  * in_uav_altitude / m_f_focal_length_uav; // Get distance of Projected area.
+    double d_half_distance_height  = m_f_height_ccd_sensor/2 * in_uav_altitude / m_f_focal_length_uav; // the width and height is full width and height.. so make half.
+    int    i_half_pixel_num_width  = (int)(d_half_distance_width  / m_f_gsd_aerial_map);              // Get pixel num from distance using gsd of aerial map.
+    int    i_half_pixel_num_height = (int)(d_half_distance_height / m_f_gsd_aerial_map);
+    // Copy data inside of the boudnary.
+    int    i_top_left_x  = in_p2i_submap_center.x - m_i_submap_margin * i_half_pixel_num_width;
+    int    i_top_left_y  = in_p2i_submap_center.y - m_i_submap_margin * i_half_pixel_num_height;
+    int    i_bot_right_x = in_p2i_submap_center.x + m_i_submap_margin * i_half_pixel_num_width;
+    int    i_bot_right_y = in_p2i_submap_center.y + m_i_submap_margin * i_half_pixel_num_height;
 
-    // 센터점 기준으로 똑 잘라서 아웃풋 값으로 넣어주기
+    out_submap_img = in_img(cv::Rect( cv::Point(i_top_left_x, i_top_left_y) ,  cv::Point(i_bot_right_x, i_bot_right_y)));
     return true;
 }
 
