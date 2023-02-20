@@ -75,7 +75,7 @@ private:
 public:
     bool GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img);
     bool GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center );
-
+    bool GetSubMap(cv::Mat in_img, cv::Point2i in_p2d_submap_center, double in_uav_altitude, cv::Mat &out_submap_img);
 };
 
 ImagePreprocessing::ImagePreprocessing(/* args */)
@@ -118,8 +118,8 @@ bool ImagePreprocessing::init()
     m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
     m_veci_target_size_uav_img  = { int(m_f_width_image_uav * m_f_resize_factor), int(m_f_height_image_uav * m_f_resize_factor)};
     m_f_uav_yaw                 = -130.0;
-    m_p2d_uav_lonlat.x = 37.54324908333;
-    m_p2d_uav_lonlat.y = 127.0779322777;
+    m_p2d_uav_lonlat.x = 37.54246977777778; //37.54324908333 
+    m_p2d_uav_lonlat.y = 127.07799991666666; //127.0779322777 maybe wrong?
 
     // x-axis: Lon, y-axis: Lat
     m_p2d_top_right_coordinate.x = 37.5455255124;
@@ -132,7 +132,7 @@ bool ImagePreprocessing::init()
     m_p2d_bot_left_coordinate.y  = 127.0744331813;
 
     // Make this values as positive top - bot, right - left
-    m_p2d_range_lonlat.x = m_p2d_top_left_coordinate.x - m_p2d_bot_left_coordinate.x;
+    m_p2d_range_lonlat.x = m_p2d_top_right_coordinate.x - m_p2d_bot_right_coordinate.x;
     m_p2d_range_lonlat.y = m_p2d_top_right_coordinate.y - m_p2d_top_left_coordinate.y;
 
     m_p2d_uav_lonlat_relative.x = m_p2d_uav_lonlat.x - m_p2d_bot_left_coordinate.x;
@@ -228,19 +228,34 @@ bool ImagePreprocessing::GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img)
 }
 
 // Get center of submap using lat, lon of drone.
-// Input: Location of drone(Lon, Lat - WGS84), Image size
+// Input : Location of drone(Lon, Lat - WGS84), Image size
+// Output: Location of Submap center from UAV Coordinate(WGS84)
 bool ImagePreprocessing::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center )
 {
-    double d_submap_center_x = in_p2d_coordinate_drone.x / in_p2d_range_latlon.x * in_img_size.x;
-    double d_submap_center_y = in_p2d_coordinate_drone.y / in_p2d_range_latlon.y * in_img_size.y;
-    out_p_submap_center.x = d_submap_center_x;
-    out_p_submap_center.y = d_submap_center_y;
+    double d_submap_center_lon = in_img_size.x - (in_p2d_coordinate_drone.x / in_p2d_range_latlon.x * in_img_size.x);  // lon direction is down to up. It should be up to down in image cooridnate.
+    double d_submap_center_lat = in_p2d_coordinate_drone.y / in_p2d_range_latlon.y * in_img_size.y;
+    // Coordinate conversion: nort(.x) -> image y-axis, east(.y) -> iamge x-axis
+    out_p_submap_center.x = (int)d_submap_center_lat; 
+    out_p_submap_center.y = (int)d_submap_center_lon;
     return true;
+    // To Do
+    // The center location is weired...
+    // Need to figure out why is the location has weired location.
+    // Candidate1: wrong map coordinate
+    // Candidate2: Wrong Drone GPS
+    // Candidate3: Wrong Conversion from EXIF data.
 }
 
-bool GetSubMap() //ImagePreprocessing::
-{
 
+// Get Submap from original img using submap ceneter and size parameter. The submap size is automatically adjusted by UAV altitude.
+// Input : Original Image, Submap center, uav altitude
+// Output: Submap for image matching
+bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2d_submap_center, double in_uav_altitude, cv::Mat &out_submap_img)
+{
+    
+    // 잘라올 크기 정의
+
+    // 센터점 기준으로 똑 잘라서 아웃풋 값으로 넣어주기
     return true;
 }
 

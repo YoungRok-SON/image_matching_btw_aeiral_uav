@@ -47,6 +47,17 @@ int main()
 	cv::Point2i p2i_submap_center {0, 0};
 	IP.GetCenterOfSubMap(IP.m_p2d_uav_lonlat_relative, IP.m_p2d_range_lonlat, p2i_img_size, p2i_submap_center);
 
+	if (m_b_visualize == true)
+	{
+		cv::Mat mat_center_of_submap;
+		m_mat_map_img.copyTo(mat_center_of_submap);
+		cv::circle(mat_center_of_submap, p2i_submap_center, 5, cv::Scalar(0,0,255), -1);
+		cv::imwrite("Center of Submap.png", mat_center_of_submap);
+		cv::imshow ("Submap Center Image", mat_center_of_submap);
+		cv::waitKey(0);
+		cv::destroyAllWindows();
+	}
+
 	// // Image Matching Class Initiation.
 	// ImageMatching IM;
 	
