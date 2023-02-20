@@ -24,25 +24,28 @@ bool   m_b_visualize   = true;
 int main()
 {
 	// Get Image and Preprocess using UAV States.
-	ImagePreprocessing II;
+	ImagePreprocessing IP;
 	cv::Mat m_mat_uav_img, m_mat_map_img;
 	std::vector<int> m_veci_target_resize_size;
 
 	// Get Preprocessing Image.
-	II.GetImages(m_mat_uav_img, m_mat_map_img);
+	IP.GetImages(m_mat_uav_img, m_mat_map_img);
 	if (m_mat_uav_img.empty() || m_mat_map_img.empty()) {
 		std::cerr << "Image load failed!" << std::endl;
 		return -1;
 	}
 
-	// // Vizualization for image import
-	// if (m_b_visualize == true)
-	// {
-	// 	cv::imshow ("Map Image", m_mat_map_img);
-	// 	cv::imshow ("UAV Image", m_mat_uav_img);
-	// 	cv::waitKey(0);
-	// 	cv::destroyAllWindows();
-	// }
+	// Vizualization for image import
+	if (m_b_visualize == true)
+	{
+		cv::imshow ("Map Image", m_mat_map_img);
+		cv::imshow ("UAV Image", m_mat_uav_img);
+		cv::waitKey(0);
+		cv::destroyAllWindows();
+	}
+	cv::Point2i p2i_img_size {m_mat_map_img.rows, m_mat_map_img.cols};
+	cv::Point2i p2i_submap_center {0, 0};
+	IP.GetCenterOfSubMap(IP.m_p2d_uav_lonlat_relative, IP.m_p2d_range_lonlat, p2i_img_size, p2i_submap_center);
 
 	// // Image Matching Class Initiation.
 	// ImageMatching IM;

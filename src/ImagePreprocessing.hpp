@@ -22,31 +22,33 @@ class ImagePreprocessing
 public:
     ImagePreprocessing(/* args */);
     ~ImagePreprocessing();
+
+    // UAV Position and Attitude info
+    cv::Point2d m_p2d_uav_lonlat;
+    cv::Point2d m_p2d_uav_lonlat_relative;
+    cv::Point3d m_p3d_uav_attitude;
+    cv::Point2d m_p2d_range_lonlat;
+
 private:
     /* Variables */
     bool m_b_initiated = true;
 
     // UAV - file path and name
-    std::string m_str_uav_img_path         = "../01_uav_images/orthophotos_100m/";
-    std::string m_str_uav_img_file_name    = "DJI_0378.JPG";
-    std::string m_str_uav_img_path_name    = m_str_uav_img_path + m_str_uav_img_file_name ;
+    std::string m_str_uav_img_path;
+    std::string m_str_uav_img_file_name;
+    std::string m_str_uav_img_path_name;
     // Map - file path and name
-    std::string m_str_map_path         = "../02_map_images/";
-    std::string m_str_map_file_name    = "geo_tagged_ortho_image_konkuk_latlon.tif";
-    std::string m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
+    std::string m_str_map_path;
+    std::string m_str_map_file_name;
+    std::string m_str_map_img_path_name;
 
-    // UAV Position and Attitude info
-    double m_d_uav_lon;
-    double m_d_uav_lat;
-    double m_d_uav_roll;
-    double m_d_uav_pitch;
-    double m_d_uav_azimuth;
 
     // Map Boundary Coordinate - WGS84(Lon(N), Lat(E))
-    cv::Point2d m_p2d_top_right_coordinate {37.5455255124, 127.0825739840};
-    cv::Point2d m_p2d_top_left_coordinate  {37.5455290267, 127.0744197768};
-    cv::Point2d m_p2d_bot_right_coordinate {37.5387993632, 127.0825667674};
-    cv::Point2d m_p2d_bot_left_coordinate  {37.5388066215, 127.0744331813};
+    cv::Point2d m_p2d_top_right_coordinate;
+    cv::Point2d m_p2d_top_left_coordinate;
+    cv::Point2d m_p2d_bot_right_coordinate;
+    cv::Point2d m_p2d_bot_left_coordinate;
+
 
     // File Metadata
     float m_f_altitude_uav;     
@@ -65,13 +67,14 @@ private:
     cv::Mat m_mat_uav_img_preprocessed;
     cv::Mat m_mat_map_img_preprocessed;
 
+/* Functios */
 private:
-    /* Functios */
     bool init();
     bool ImportImages();
     bool PreprocessImages();
 public:
     bool GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img);
+    bool GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center );
 
 };
 
@@ -90,11 +93,20 @@ ImagePreprocessing::~ImagePreprocessing()
 
 bool ImagePreprocessing::init()
 {
+    m_str_uav_img_path         = "/home/youngrok/git_ws/image_matching_btw_aeiral_uav/01_uav_images/orthophotos_100m/";
+    m_str_uav_img_file_name    = "DJI_0378.JPG";
+    m_str_uav_img_path_name    = m_str_uav_img_path + m_str_uav_img_file_name ;
+    
+    m_str_map_path             = "/home/youngrok/git_ws/image_matching_btw_aeiral_uav/02_map_images/";
+    m_str_map_file_name        = "konkuk_latlon_geo_tagged.tif";
+    m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
+
     if(ImportImages() == false)
     {
         std::cerr << "Image import has failed." << std::endl;
         return false;
     }
+
     m_f_altitude_uav            = 10220.0;          // [m to cm]
     m_f_focal_length_uav        = 0.45 ;            // [mm to cm]
     m_f_width_image_uav         = 4000.0;           // [px]
@@ -106,12 +118,8 @@ bool ImagePreprocessing::init()
     m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
     m_veci_target_size_uav_img  = { int(m_f_width_image_uav * m_f_resize_factor), int(m_f_height_image_uav * m_f_resize_factor)};
     m_f_uav_yaw                 = -130.0;
-
-    m_d_uav_lon     = 127.0779322777;
-    m_d_uav_lat     = 37.54324908333;
-    m_d_uav_roll    = 0.0;
-    m_d_uav_pitch   = 0.0;
-    m_d_uav_azimuth = 0.0;
+    m_p2d_uav_lonlat.x = 37.54324908333;
+    m_p2d_uav_lonlat.y = 127.0779322777;
 
     // x-axis: Lon, y-axis: Lat
     m_p2d_top_right_coordinate.x = 37.5455255124;
@@ -119,7 +127,16 @@ bool ImagePreprocessing::init()
     m_p2d_top_left_coordinate.x  = 37.5455290267;
     m_p2d_top_left_coordinate.y  = 127.0744197768;
     m_p2d_bot_right_coordinate.x = 37.5387993632;
+    m_p2d_bot_right_coordinate.y = 127.0825667674;
+    m_p2d_bot_left_coordinate.x  = 37.5388066215;
     m_p2d_bot_left_coordinate.y  = 127.0744331813;
+
+    // Make this values as positive top - bot, right - left
+    m_p2d_range_lonlat.x = m_p2d_top_left_coordinate.x - m_p2d_bot_left_coordinate.x;
+    m_p2d_range_lonlat.y = m_p2d_top_right_coordinate.y - m_p2d_top_left_coordinate.y;
+
+    m_p2d_uav_lonlat_relative.x = m_p2d_uav_lonlat.x - m_p2d_bot_left_coordinate.x;
+    m_p2d_uav_lonlat_relative.y = m_p2d_uav_lonlat.y - m_p2d_bot_left_coordinate.y;
 
     std::cout << "UAV Altitude         : " << m_f_altitude_uav << std::endl;
     std::cout << "UAV focal length     : " << m_f_focal_length_uav << std::endl;
@@ -138,6 +155,7 @@ bool ImagePreprocessing::init()
 // output: boolean
 bool ImagePreprocessing::ImportImages()
 {
+
     m_mat_uav_img = cv::imread(m_str_uav_img_path_name, cv::IMREAD_COLOR);
     m_mat_map_img = cv::imread(m_str_map_img_path_name, cv::IMREAD_COLOR);
 
@@ -206,6 +224,23 @@ bool ImagePreprocessing::GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img)
     
     out_uav_img = m_mat_uav_img_preprocessed;
     out_map_img = m_mat_map_img;
+    return true;
+}
+
+// Get center of submap using lat, lon of drone.
+// Input: Location of drone(Lon, Lat - WGS84), Image size
+bool ImagePreprocessing::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center )
+{
+    double d_submap_center_x = in_p2d_coordinate_drone.x / in_p2d_range_latlon.x * in_img_size.x;
+    double d_submap_center_y = in_p2d_coordinate_drone.y / in_p2d_range_latlon.y * in_img_size.y;
+    out_p_submap_center.x = d_submap_center_x;
+    out_p_submap_center.y = d_submap_center_y;
+    return true;
+}
+
+bool GetSubMap() //ImagePreprocessing::
+{
+
     return true;
 }
 
