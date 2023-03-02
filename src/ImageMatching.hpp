@@ -73,6 +73,8 @@ public: /* Functions */
                               std::vector<cv::DMatch> out_refined_matching_result);
 
     void ShowKeypoints(cv::Mat in_img, std::vector<cv::KeyPoint> in_vec_key_points, cv::Mat &out_mat_keypoint_img);
+
+    bool SetGeographicConstraints(cv::Point2i in_p3d_uav_coordinate);
 private:
     bool ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_slic_mask, std::vector<cv::KeyPoint> &out_vector_keypoints);
 private: /* Variables */
@@ -113,6 +115,7 @@ private: /* Variables */
     int    m_i_num_keypoint_threshold = 1000;
     // Histogram voting for geopraphical constriant
     int    m_i_num_pixels_in_bin      = 1;
+    cv::Point2i m_delta_translation;
     // Refinement matched result using template matching
     int    m_i_kdtree_flann_search_param = 50;
     int    m_d_radius_of_pixel           = 20;   // 찾을 경계의 반경

@@ -31,6 +31,8 @@ public:
     cv::Point2d m_p2d_range_lonlat;
 
     float m_f_altitude_uav;     // For Debugging need to be private
+
+    cv::Point2i m_p2i_geo_constraints;
 private:
     /* Variables */
     bool m_b_initiated = true;
@@ -77,6 +79,7 @@ public:
     bool GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img);
     bool GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center );
     bool GetSubMap(cv::Mat in_img, cv::Point2i in_p2d_submap_center, double in_uav_altitude, cv::Mat &out_submap_img);
+    cv::Point2i GetGeographicConstraints(cv::Mat in_submap_img, cv::Mat in_uav_img);
 };
 
 ImagePreprocessing::ImagePreprocessing(/* args */)
@@ -155,10 +158,9 @@ bool ImagePreprocessing::init()
 
 // Import Image from given path of ImagePreprocessing.hpp
 // Input: noting
-// output: boolean
+// Output: boolean
 bool ImagePreprocessing::ImportImages()
 {
-
     m_mat_uav_img = cv::imread(m_str_uav_img_path_name, cv::IMREAD_COLOR);
     m_mat_map_img = cv::imread(m_str_map_img_path_name, cv::IMREAD_COLOR);
 
@@ -167,13 +169,12 @@ bool ImagePreprocessing::ImportImages()
         std::cerr << "Image import fail." << std::endl;
         return false;
     }
-
     return true;
 }
 
 // Get resize factor using metadata information. Especially GSD value and altitude.
-// Input: noting
-// output: boolean
+// Input : Nothing
+// Output: boolean
 bool ImagePreprocessing::PreprocessImages()
 {
     if( m_b_initiated == false)
@@ -240,16 +241,17 @@ bool ImagePreprocessing::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, 
     // Coordinate conversion: nort(.x) -> image y-axis, east(.y) -> iamge x-axis
     out_p_submap_center.x = (int)d_submap_center_lat; 
     out_p_submap_center.y = (int)d_submap_center_lon;
+    
+    
     return true;
 }
 
 
 // Get Submap from original img using submap ceneter and size parameter. The submap size is automatically adjusted by UAV altitude.
-// Input : Original Image, Submap center, uav altitude
+// Input : Original Image, Submap center(lat,lon-WGS84), uav altitude(cm)
 // Output: Submap for image matching
 bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2i_submap_center, double in_uav_altitude, cv::Mat &out_submap_img)
 {
-    
     // Define the size of submap around center of submap.
     double d_half_distance_width   = m_f_width_ccd_sensor/2  * in_uav_altitude / m_f_focal_length_uav; // Get distance of Projected area.
     double d_half_distance_height  = m_f_height_ccd_sensor/2 * in_uav_altitude / m_f_focal_length_uav; // the width and height is full width and height.. so make half.
@@ -263,6 +265,14 @@ bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2i_submap_cen
 
     out_submap_img = in_img(cv::Rect( cv::Point(i_top_left_x, i_top_left_y) ,  cv::Point(i_bot_right_x, i_bot_right_y)));
     return true;
+}
+
+cv::Point2i ImagePreprocessing::GetGeographicConstraints(cv::Mat in_submap_img, cv::Mat in_uav_img) // 이걸 중심점을 어떻게 구해놓을지 ... 다른 함수에서 구해서 멤버로 넣어 놓을지, 아니면 여기서 다시 연산을 할지?
+{
+    m_p2i_geo_constraints.x = in_submap_img.cols;
+    m_p2i_geo_constraints.y = in_submap_img.rows;
+
+    return m_p2i_geo_constraints;
 }
 
 #endif //__IMAGE_PREPROCESSING__

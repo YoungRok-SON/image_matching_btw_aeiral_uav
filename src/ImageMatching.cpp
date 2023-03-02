@@ -192,8 +192,10 @@ bool ImageMatching::MatchImages(cv::Mat in_uav_img, cv::Mat in_map_img,
     start = std::clock();
     cv::Point p_delta_translation;
     // Todo
-    // this part can be replaced by drone coordinate..?
-    GetCenterOfGeographyConstraint(vvec_knn_matches, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation);
+    // this part can be replaced by drone coordinate..? --> It need to be check if the uav coordinate is weired, then the matching will not be work.
+    // GetCenterOfGeographyConstraint(vvec_knn_matches, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation);
+    
+
     end = std::clock();
     std::cout << "Histogram voting duration: " << duration/CLOCKS_PER_SEC << "s." << std::endl;
     // Matching refinement using Template matching with Matching cadidates.
@@ -246,7 +248,7 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
         return false;
     }
 
-    std::map<int, cv::DMatch> mapidm_refined_matching;
+    
     // Search and push back to vector
     for (size_t idx_query = 0; idx_query < in_vec_uav_keypoints.size(); idx_query++) // UAV 이미지에 있는 키포인트만큼 반복
     {
@@ -504,4 +506,12 @@ void ImageMatching::ShowKeypoints(cv::Mat in_img, std::vector<cv::KeyPoint> in_v
 		int point_y = in_vec_key_points[idx].pt.y;
 		cv::circle(out_mat_keypoint_img, cv::Point(point_x, point_y), 1, cv::Scalar(100,255,100), -1);
 	}
+}
+
+
+bool ImageMatching::SetGeographicConstraints(cv::Point2i in_delta_translation)
+{
+    m_delta_translation.x = in_delta_translation.x;
+    m_delta_translation.y = in_delta_translation.y;
+    return true;
 }
