@@ -15,6 +15,7 @@
 
 #include "ImagePreprocessing.hpp"
 #include "ImageMatching.hpp"
+#include "TestCodes.hpp"
 
 #include "opencv2/highgui/highgui.hpp"
 
@@ -71,7 +72,28 @@ int main()
 		cv::destroyAllWindows();
 	}
 
-	// Image Matching Class Initiation.
+	// Match two image with opencv key and descriptors.
+	TestCodes TC;
+	KeyDescType keytype  = TSURF;
+	KeyDescType desctype = TORB;
+	std::vector<cv::KeyPoint> vec_map_keypoints;
+	std::vector<cv::KeyPoint> vec_uav_keypoints;
+	cv::Mat mat_map_desc;
+	cv::Mat mat_uav_desc;
+	TC.ExtractKeyAndDesc(mat_submap, keytype, desctype, vec_map_keypoints, mat_map_desc);
+	TC.ExtractKeyAndDesc(m_mat_uav_img, keytype, desctype, vec_uav_keypoints, mat_uav_desc);
+	std::vector<cv::DMatch> vec_dmatch_knn;
+	TC.MatchImages(mat_submap, m_mat_uav_img, mat_map_desc, mat_uav_desc, desctype, vec_dmatch_knn);
+	TC.ShowMatchingResult(mat_submap, m_mat_uav_img, vec_uav_keypoints, vec_map_keypoints, vec_dmatch_knn);
+
+	return 0;
+}
+
+
+
+
+/// This code is about image matching using SLIC and histogram vote-based key point matching.
+/* 	// Image Matching Class Initiation.
 	ImageMatching IM;
 	
 	// Extract UAV image key point and descriptor using SLIC and BRISK.
@@ -125,9 +147,4 @@ int main()
 		cv::imshow("UAV Image", m_mat_uav_img);
 		cv::waitKey(0);
 		cv::destroyAllWindows();
-	}	
-
-
-
-	return 0;
-}
+	}	 */
