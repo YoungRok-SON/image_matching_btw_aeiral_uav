@@ -8,6 +8,7 @@ aerial_map_generation/test_src/KU_orthogonal_map/*
 *.p4d
 *.asv
 *.png
+*.bag
 .vscode/*
 01_uav_images/*
 02_map_images/*

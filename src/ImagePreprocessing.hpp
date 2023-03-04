@@ -120,7 +120,7 @@ bool ImagePreprocessing::init()
     m_f_gsd_uav_img             = m_f_altitude_uav*m_f_width_ccd_sensor/
                                   (m_f_focal_length_uav*m_f_width_image_uav); // [cm]
     m_f_gsd_aerial_map          = 25;                                         // [cm] ground sampling distance: Check the information from the institude of aerial image.
-    m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
+    m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_uav_img;         // resize factor to match gsd of two image
     m_veci_target_size_uav_img  = { int(m_f_width_image_uav * m_f_resize_factor), int(m_f_height_image_uav * m_f_resize_factor)};
     m_f_uav_yaw                 = -130.0;
     m_p2d_uav_lonlat.x = 37.54246977777778; //37.54324908333 
