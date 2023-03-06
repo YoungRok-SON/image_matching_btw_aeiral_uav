@@ -361,6 +361,7 @@ bool ImageMatching::ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_sli
     }
     return true;
 }
+
 // Find Geographical constraints using one to many constrainst
 bool ImageMatching::GetCenterOfGeographyConstraint( std::vector<std::vector<cv::DMatch>> in_vvec_dmatch_reuslt,
                                                     std::vector<cv::KeyPoint> in_vec_uav_keypoints,

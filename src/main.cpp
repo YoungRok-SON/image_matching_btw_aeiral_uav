@@ -20,7 +20,9 @@
 #include "opencv2/highgui/highgui.hpp"
 
 // Debug Variables
-bool   m_b_visualize   = true;
+bool   m_b_visualize   = false;
+enum MatchingMethod
+{};
 
 int main()
 {
@@ -75,7 +77,7 @@ int main()
 	// Match two image with opencv key and descriptors.
 	TestCodes TC;
 	KeyDescType keytype  = TSURF;
-	KeyDescType desctype = TORB;
+	KeyDescType desctype = TSURF;
 	std::vector<cv::KeyPoint> vec_map_keypoints;
 	std::vector<cv::KeyPoint> vec_uav_keypoints;
 	cv::Mat mat_map_desc;
@@ -83,8 +85,13 @@ int main()
 	TC.ExtractKeyAndDesc(mat_submap, keytype, desctype, vec_map_keypoints, mat_map_desc);
 	TC.ExtractKeyAndDesc(m_mat_uav_img, keytype, desctype, vec_uav_keypoints, mat_uav_desc);
 	std::vector<cv::DMatch> vec_dmatch_knn;
-	TC.MatchImages(mat_submap, m_mat_uav_img, mat_map_desc, mat_uav_desc, desctype, vec_dmatch_knn);
-	TC.ShowMatchingResult(mat_submap, m_mat_uav_img, vec_uav_keypoints, vec_map_keypoints, vec_dmatch_knn);
+	cv::Mat mat_img_matched_result;
+	TC.MatchImages( m_mat_uav_img, mat_submap, mat_uav_desc, mat_map_desc, desctype, vec_dmatch_knn);
+	TC.ShowMatchingResult( m_mat_uav_img, mat_submap, vec_uav_keypoints, vec_map_keypoints, vec_dmatch_knn, mat_img_matched_result);
+	cv::imwrite("["+getItemName(desctype)+"]" +" Matching result wo ransac.png" , mat_img_matched_result);
+
+	cv::Mat result = TC.GetHomography(m_mat_uav_img, mat_submap,  vec_uav_keypoints, vec_map_keypoints, vec_dmatch_knn, mat_img_matched_result);
+	cv::imwrite("["+getItemName(desctype)+"] Matching result.png" , result);
 
 	return 0;
 }

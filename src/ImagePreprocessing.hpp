@@ -120,7 +120,7 @@ bool ImagePreprocessing::init()
     m_f_gsd_uav_img             = m_f_altitude_uav*m_f_width_ccd_sensor/
                                   (m_f_focal_length_uav*m_f_width_image_uav); // [cm]
     m_f_gsd_aerial_map          = 25;                                         // [cm] ground sampling distance: Check the information from the institude of aerial image.
-    m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_uav_img;         // resize factor to match gsd of two image
+    m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
     m_veci_target_size_uav_img  = { int(m_f_width_image_uav * m_f_resize_factor), int(m_f_height_image_uav * m_f_resize_factor)};
     m_f_uav_yaw                 = -130.0;
     m_p2d_uav_lonlat.x = 37.54246977777778; //37.54324908333 
@@ -142,7 +142,7 @@ bool ImagePreprocessing::init()
 
     m_p2d_uav_lonlat_relative.x = m_p2d_uav_lonlat.x - m_p2d_bot_left_coordinate.x;
     m_p2d_uav_lonlat_relative.y = m_p2d_uav_lonlat.y - m_p2d_bot_left_coordinate.y;
-    m_i_submap_margin = 1.7;
+    m_i_submap_margin = 2;
 
     std::cout << "UAV Altitude         : " << m_f_altitude_uav << std::endl;
     std::cout << "UAV focal length     : " << m_f_focal_length_uav << std::endl;
@@ -187,11 +187,14 @@ bool ImagePreprocessing::PreprocessImages()
         std::cout << "Image target size is not determined." << std::endl;
         return false;
     }
+    
+    // Gaussian Blur
+	cv::GaussianBlur(m_mat_uav_img, m_mat_uav_img, cv::Size(21,21), 0);
 
     // Image reszie
     cv::Mat     mat_uav_img_resized;
     cv::Size2d  s2d_target_size(m_veci_target_size_uav_img[0], m_veci_target_size_uav_img[1]);
-    cv::resize(m_mat_uav_img,mat_uav_img_resized,s2d_target_size,cv::INTER_LINEAR);
+    cv::resize(m_mat_uav_img,mat_uav_img_resized,s2d_target_size, cv::INTER_LINEAR );
 
     // Image Rotation Alignment
     cv::Mat mat_uav_image_rotated;
