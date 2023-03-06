@@ -188,8 +188,7 @@ bool ImagePreprocessing::PreprocessImages()
         return false;
     }
     
-    // Gaussian Blur
-	cv::GaussianBlur(m_mat_uav_img, m_mat_uav_img, cv::Size(21,21), 0);
+
 
     // Image reszie
     cv::Mat     mat_uav_img_resized;

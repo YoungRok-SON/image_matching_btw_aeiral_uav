@@ -37,7 +37,8 @@ int main()
 		std::cerr << "Image load failed!" << std::endl;
 		return -1;
 	}
-
+	// Gaussian Blur
+	cv::GaussianBlur(m_mat_uav_img, m_mat_uav_img, cv::Size(3,3), 0);
 	// Vizualization for image import
 	if (m_b_visualize == true)
 	{
@@ -76,8 +77,8 @@ int main()
 
 	// Match two image with opencv key and descriptors.
 	TestCodes TC;
-	KeyDescType keytype  = TSURF;
-	KeyDescType desctype = TSURF;
+	KeyDescType keytype  = TBRIEF;
+	KeyDescType desctype = TBRIEF;
 	std::vector<cv::KeyPoint> vec_map_keypoints;
 	std::vector<cv::KeyPoint> vec_uav_keypoints;
 	cv::Mat mat_map_desc;

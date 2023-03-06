@@ -20,7 +20,6 @@
 
 enum KeyDescType
 {
-    THOG,
     TSIFT,
     TSURF,
     TBRIEF,
