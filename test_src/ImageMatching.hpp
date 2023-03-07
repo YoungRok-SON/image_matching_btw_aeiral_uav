@@ -79,36 +79,36 @@ private:
     bool ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_slic_mask, std::vector<cv::KeyPoint> &out_vector_keypoints);
 private: /* Variables */
     // Init
-    bool    m_b_initiated = false;
-    cv::Mat m_mat_uav_img;
-    cv::Mat m_mat_map_img;
-    // SLIC Paramters
-    int   m_i_uav_num_superpixels    = 750;
-    int   m_i_uav_num_levels         = 4;
-    int   m_i_uav_prior              = 1;
-    int   m_i_uav_num_histogram_bins = 5;
-    bool  m_b_uav_double_step        = false;
-    int   m_i_uav_num_iterations     = 4;
+    // bool    m_b_initiated = false;
+    // cv::Mat m_mat_uav_img;
+    // cv::Mat m_mat_map_img;
+    // // SLIC Paramters
+    // int   m_i_uav_num_superpixels    = 750;
+    // int   m_i_uav_num_levels         = 4;
+    // int   m_i_uav_prior              = 1;
+    // int   m_i_uav_num_histogram_bins = 5;
+    // bool  m_b_uav_double_step        = false;
+    // int   m_i_uav_num_iterations     = 4;
 
-    int   m_i_map_num_superpixels    = 1000;
-    int   m_i_map_num_levels         = 3;
-    int   m_i_map_prior              = 1;
-    int   m_i_map_num_histogram_bins = 10;
-    bool  m_b_map_double_step        = false;
-    int   m_i_map_num_iterations     = 10;
-    // Key point extraction parameters
-    int   m_i_keypoint_size  = 10;
-    int   m_f_keypoint_angle = 0.0;
-    /// for brisk
-    int   m_i_threshold      = 30;
-    int   m_i_octaves        = 4;
-    float m_f_pattern_scale  = 1.0f;
-    /// for sift
-    int    m_i_n_feature      = 0;
-    int    m_i_n_octav_layers = 3;
-    double m_d_contrast_th    = 0.04;
-    double m_d_edge_th        = 10;
-    double m_d_sigma          = 1.6;
+    // int   m_i_map_num_superpixels    = 1000;
+    // int   m_i_map_num_levels         = 3;
+    // int   m_i_map_prior              = 1;
+    // int   m_i_map_num_histogram_bins = 10;
+    // bool  m_b_map_double_step        = false;
+    // int   m_i_map_num_iterations     = 10;
+    // // Key point extraction parameters
+    // int   m_i_keypoint_size  = 10;
+    // int   m_f_keypoint_angle = 0.0;
+    // /// for brisk
+    // int   m_i_threshold      = 30;
+    // int   m_i_octaves        = 4;
+    // float m_f_pattern_scale  = 1.0f;
+    // /// for sift
+    // int    m_i_n_feature      = 0;
+    // int    m_i_n_octav_layers = 3;
+    // double m_d_contrast_th    = 0.04;
+    // double m_d_edge_th        = 10;
+    // double m_d_sigma          = 1.6;
     // Descriptor matching parameters
 
     int    m_i_num_one_to_many        = 500; 

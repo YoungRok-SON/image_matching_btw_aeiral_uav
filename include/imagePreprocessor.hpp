@@ -2,7 +2,7 @@
  * @copyright (c) AI LAB - Konkuk Uni.
  * <br>All rights reserved. Subject to limited distribution and restricted disclosure only.
  * @author  dudfhe3349@gmail.com
- * @file ImagePreprocessing.hpp
+ * @file imagePreprocessor.hpp
  * @brief Image Import and get meta data from image
  * @version 1.0
  * @date 1-11-2023
@@ -10,18 +10,19 @@
  * @warning No warnings
  */
 
-#ifndef __IMAGE_PREPROCESSING__
-#define __IMAGE_PREPROCESSING__
+#ifndef __IMAGE_PREPROCESSOR__
+#define __IMAGE_PREPROCESSOR__
 
 /* Opencv lib */
-#include <opencv4/opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv4/opencv2/imgproc/imgproc.hpp>
+#include "opencv4/opencv2/core/core.hpp"
+#include "opencv4/opencv2/imgcodecs/imgcodecs.hpp"
+#include "opencv4/opencv2/imgproc/imgproc.hpp"
 
-class ImagePreprocessing
+class imagePreprocessor
 {
 public:
-    ImagePreprocessing(/* args */);
-    ~ImagePreprocessing();
+    imagePreprocessor(/* args */);
+    ~imagePreprocessor();
 
     // UAV Position and Attitude info 
     // For Debugging need to be private
@@ -82,20 +83,20 @@ public:
     cv::Point2i GetGeographicConstraints(cv::Mat in_submap_img, cv::Mat in_uav_img);
 };
 
-ImagePreprocessing::ImagePreprocessing(/* args */)
+imagePreprocessor::imagePreprocessor(/* args */)
 {
     if( init() == false )
     {
         m_b_initiated = false;
-        std::cerr << "ImagePreprocessing Class has failed to initiate." << std::endl;
+        std::cerr << "imagePreprocessor Class has failed to initiate." << std::endl;
     }
 }
 
-ImagePreprocessing::~ImagePreprocessing()
+imagePreprocessor::~imagePreprocessor()
 {
 }
 
-bool ImagePreprocessing::init()
+bool imagePreprocessor::init()
 {
     m_str_uav_img_path         = "/home/youngrok/git_ws/image_matching_btw_aeiral_uav/01_uav_images/orthophotos_100m/";
     m_str_uav_img_file_name    = "DJI_0378.JPG";
@@ -156,10 +157,10 @@ bool ImagePreprocessing::init()
     return true;
 }
 
-// Import Image from given path of ImagePreprocessing.hpp
+// Import Image from given path of imagePreprocessor.hpp
 // Input: noting
 // Output: boolean
-bool ImagePreprocessing::ImportImages()
+bool imagePreprocessor::ImportImages()
 {
     m_mat_uav_img = cv::imread(m_str_uav_img_path_name, cv::IMREAD_COLOR);
     m_mat_map_img = cv::imread(m_str_map_img_path_name, cv::IMREAD_COLOR);
@@ -175,11 +176,11 @@ bool ImagePreprocessing::ImportImages()
 // Get resize factor using metadata information. Especially GSD value and altitude.
 // Input : Nothing
 // Output: boolean
-bool ImagePreprocessing::PreprocessImages()
+bool imagePreprocessor::PreprocessImages()
 {
     if( m_b_initiated == false)
     {
-        std::cerr << "ImagePreprocessing Class has failed to initiate." << std::endl;
+        std::cerr << "imagePreprocessor Class has failed to initiate." << std::endl;
         return false;
     }
     if(m_veci_target_size_uav_img.empty() == true)
@@ -215,16 +216,16 @@ bool ImagePreprocessing::PreprocessImages()
 // Pass the image set
 // Input: noting
 // output: boolean
-bool ImagePreprocessing::GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img)
+bool imagePreprocessor::GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img)
 {
     if( m_b_initiated == false)
     {
-        std::cerr << "ImagePreprocessing Class has failed to initiate." << std::endl;
+        std::cerr << "imagePreprocessor Class has failed to initiate." << std::endl;
         return false;
     }
     if( PreprocessImages() == false )
     {
-        std::cerr << "ImagePreprocessing has failed." << std::endl;
+        std::cerr << "imagePreprocessor has failed." << std::endl;
         return false;
     }   
     
@@ -236,7 +237,7 @@ bool ImagePreprocessing::GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img)
 // Get center of submap using lat, lon of drone.
 // Input : Location of drone(Lon, Lat - WGS84), Image size
 // Output: Location of Submap center from UAV Coordinate(WGS84)
-bool ImagePreprocessing::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center )
+bool imagePreprocessor::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, cv::Point2d in_p2d_range_latlon, cv::Point2i in_img_size , cv::Point2i &out_p_submap_center )
 {
     double d_submap_center_lon = in_img_size.x - (in_p2d_coordinate_drone.x / in_p2d_range_latlon.x * in_img_size.x);  // lon direction is down to up. It should be up to down in image cooridnate.
     double d_submap_center_lat = in_p2d_coordinate_drone.y / in_p2d_range_latlon.y * in_img_size.y;
@@ -252,7 +253,7 @@ bool ImagePreprocessing::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, 
 // Get Submap from original img using submap ceneter and size parameter. The submap size is automatically adjusted by UAV altitude.
 // Input : Original Image, Submap center(lat,lon-WGS84), uav altitude(cm)
 // Output: Submap for image matching
-bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2i_submap_center, double in_uav_altitude, cv::Mat &out_submap_img)
+bool imagePreprocessor::GetSubMap(cv::Mat in_img, cv::Point2i in_p2i_submap_center, double in_uav_altitude, cv::Mat &out_submap_img)
 {
     // Define the size of submap around center of submap.
     double d_half_distance_width   = m_f_width_ccd_sensor/2  * in_uav_altitude / m_f_focal_length_uav; // Get distance of Projected area.
@@ -269,7 +270,7 @@ bool ImagePreprocessing::GetSubMap(cv::Mat in_img, cv::Point2i in_p2i_submap_cen
     return true;
 }
 
-cv::Point2i ImagePreprocessing::GetGeographicConstraints(cv::Mat in_submap_img, cv::Mat in_uav_img) // 이걸 중심점을 어떻게 구해놓을지 ... 다른 함수에서 구해서 멤버로 넣어 놓을지, 아니면 여기서 다시 연산을 할지?
+cv::Point2i imagePreprocessor::GetGeographicConstraints(cv::Mat in_submap_img, cv::Mat in_uav_img) // 이걸 중심점을 어떻게 구해놓을지 ... 다른 함수에서 구해서 멤버로 넣어 놓을지, 아니면 여기서 다시 연산을 할지?
 {
     m_p2i_geo_constraints.x = in_submap_img.cols;
     m_p2i_geo_constraints.y = in_submap_img.rows;
@@ -277,4 +278,4 @@ cv::Point2i ImagePreprocessing::GetGeographicConstraints(cv::Mat in_submap_img, 
     return m_p2i_geo_constraints;
 }
 
-#endif //__IMAGE_PREPROCESSING__
+#endif //__IMAGE_PREPROCESSOR__

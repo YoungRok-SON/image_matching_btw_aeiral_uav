@@ -12,12 +12,14 @@
 
 #include <iostream>
 #include <string>
+/* Opencv Libs */
+#include "opencv4/opencv2/highgui/highgui.hpp"
 
-#include "ImagePreprocessing.hpp"
-#include "ImageMatching.hpp"
-#include "TestCodes.hpp"
+#include "../include/imagePreprocessor.hpp"
+#include "../include/keyPointDetector.hpp"
+#include "../include/descriptorComputer.hpp"
+#include "../include/imageMatcher.hpp"
 
-#include "opencv2/highgui/highgui.hpp"
 
 // Debug Variables
 bool   m_b_visualize   = false;
@@ -27,7 +29,7 @@ enum MatchingMethod
 int main()
 {
 	// Get Image and Preprocess using UAV States.
-	ImagePreprocessing IP;
+	imagePreprocessor IP;
 	cv::Mat m_mat_uav_img, m_mat_map_img;
 	std::vector<int> m_veci_target_resize_size;
 
@@ -75,24 +77,45 @@ int main()
 		cv::destroyAllWindows();
 	}
 
-	// Match two image with opencv key and descriptors.
-	TestCodes TC;
-	KeyDescType keytype  = TBRIEF;
-	KeyDescType desctype = TBRIEF;
+	// Detect Key points
+	KeyDescType 	 keytype  = TBRIEF;
+	keyPointDetector KD;
 	std::vector<cv::KeyPoint> vec_map_keypoints;
 	std::vector<cv::KeyPoint> vec_uav_keypoints;
-	cv::Mat mat_map_desc;
-	cv::Mat mat_uav_desc;
-	TC.ExtractKeyAndDesc(mat_submap, keytype, desctype, vec_map_keypoints, mat_map_desc);
-	TC.ExtractKeyAndDesc(m_mat_uav_img, keytype, desctype, vec_uav_keypoints, mat_uav_desc);
-	std::vector<cv::DMatch> vec_dmatch_knn;
-	cv::Mat mat_img_matched_result;
-	TC.MatchImages( m_mat_uav_img, mat_submap, mat_uav_desc, mat_map_desc, desctype, vec_dmatch_knn);
-	TC.ShowMatchingResult( m_mat_uav_img, mat_submap, vec_uav_keypoints, vec_map_keypoints, vec_dmatch_knn, mat_img_matched_result);
-	cv::imwrite("["+getItemName(desctype)+"]" +" Matching result wo ransac.png" , mat_img_matched_result);
+	KD.DetectKeyPoints(mat_submap, keytype, vec_map_keypoints);
+	KD.DetectKeyPoints(m_mat_uav_img, keytype, vec_uav_keypoints);
+	
+	// Compute Descriptor
+	descriptorComputer DC;
+	cv::Mat 		   mat_map_desc;
+	cv::Mat 		   mat_uav_desc;
+	DC.ComputeDescriptors(mat_submap,vec_map_keypoints, keytype, mat_map_desc);
+	DC.ComputeDescriptors(m_mat_uav_img, vec_uav_keypoints, keytype, mat_uav_desc);
 
-	cv::Mat result = TC.GetHomography(m_mat_uav_img, mat_submap,  vec_uav_keypoints, vec_map_keypoints, vec_dmatch_knn, mat_img_matched_result);
-	cv::imwrite("["+getItemName(desctype)+"] Matching result.png" , result);
+	// Match two image with opencv key and descriptors.
+	imageMatcher 			IM;
+	std::vector<cv::DMatch> vec_dmatch_knn;
+	cv::Mat 				mat_img_matched_result;
+
+	IM.MatchImages( m_mat_uav_img, mat_submap,
+					vec_uav_keypoints, vec_map_keypoints,
+					mat_uav_desc, mat_map_desc,
+					keytype,
+					vec_dmatch_knn);
+
+	IM.ShowMatchingResult( m_mat_uav_img, mat_submap,
+						   vec_uav_keypoints, vec_map_keypoints,
+						   vec_dmatch_knn,
+						   mat_img_matched_result);
+
+	
+	cv::Mat result = IM.GetHomography( m_mat_uav_img, mat_submap, 
+									   vec_uav_keypoints, vec_map_keypoints,
+									   vec_dmatch_knn,
+									   mat_img_matched_result);
+
+	cv::imwrite("["+getItemName(keytype)+"]" +" Matching result wo ransac.png" , mat_img_matched_result);
+	cv::imwrite("["+getItemName(keytype)+"] Matching result.png" , result);
 
 	return 0;
 }

@@ -1,210 +1,216 @@
+
 /**
  * @copyright (c) AI LAB - Konkuk Uni.
  * <br>All rights reserved. Subject to limited distribution and restricted disclosure only.
  * @author  dudfhe3349@gmail.com
- * @file ImageMatching.cpp
- * @brief Match images btween UAV(low altitude) with Aerial Image Map(Hight Altitude)
+ * @file imageMatcher.cpp
+ * @brief Match two image using various method.
  * @version 1.0
- * @date 1-11-2023
+ * @date 07-03-2023
  * @bug No known bugs
  * @warning No warnings
-**/
+ */
 
-#include "ImageMatching.hpp"
+#include "../include/imageMatcher.hpp"
 
-bool comp(const std::pair<int, int> &p1,const std::pair<int, int> &p2){
-    if(p1.second == p2.second){     //빈도수가 같으면 
-        return p1.first < p2.first; //숫자(key)작은게 앞으로 
-    }
-    return p1.second > p2.second;    //다르면 빈도수가 큰게 앞으로 
-}
 
-ImageMatching::ImageMatching()
+imageMatcher::imageMatcher()
 {
-    if( Init() == false )
+    if( init() == false )
     {
-        std::cout  << "Image Matching Class Init has failed." << std::endl;
+        std::cout  << "[keyPointDetector] Class init has failed." << std::endl;
     }
     m_b_initiated = true;
 }
 
-ImageMatching::~ImageMatching() {}
+imageMatcher::~imageMatcher(){}
 
-bool ImageMatching::Init()
+bool imageMatcher::init()
 {
-    return true;
-}
-
-// Run function of Image Matching Class.
-// Input : UAV and Map image to match.
-// Output: Homography matrix for matching Image.
-bool ImageMatching::RunImageMatching()
-{
-    if( m_b_initiated == false)
-    {
-        std::cerr << "Image Matching class initiation is failed." << std::endl;
-        return false;
-    }
-    // TBD after all functions are defiend.
-    // if (in_img.empty() == true )
-    // {
-    // std::cerr << "Input image is empty." << std::endl;
-    // return false;
-    // }
-    return true;
-}
-
-// Extract Key point and descriptor from image with Variable using SLIC boudnary and BRISK algorithm.
-// Input : Image to extrac key point, SLIC parameters.
-// Output: Keypoint Set vector.
-bool ImageMatching::ComputeKeyDescriptorSlic(cv::Mat in_img, ImgType in_img_type, bool do_downsample, DescriptorType in_descriptor_type, std::vector<cv::KeyPoint> &out_vec_key_points, cv::Mat &out_mat_descriptors )
-{
-    cv::Mat mat_slic_result, mat_slic_mask;
-    int i_width, i_height, i_channels = in_img.channels();
-    int i_display_mode = 0;
-    cv::Ptr<cv::ximgproc::SuperpixelSEEDS> seeds;
-    cv::Mat mat_gray_img;
-    i_width  = in_img.size().width;
-    i_height = in_img.size().height;
-    std::clock_t start, end;
-    double duration;
-
-    if( in_img_type == UAV)
-    {
-        start = std::clock();
-
-        cv::cvtColor(in_img, mat_gray_img, cv::COLOR_BGR2GRAY);
-
-        // Generate Initial SEEDs for SLIC.
-        seeds = cv::ximgproc::createSuperpixelSEEDS(i_width           , i_height     , i_channels         , m_i_uav_num_superpixels,
-                                                    m_i_uav_num_levels, m_i_uav_prior, m_i_uav_num_histogram_bins, m_b_uav_double_step    );
-        // Convert img type
-        cv::Mat mat_converted_img;
-        cv::cvtColor(in_img, mat_converted_img, cv::COLOR_BGR2HSV);
-
-        // Calculates the superpixel sgmentation on a given image with parameters.
-        seeds->iterate(mat_converted_img,m_i_uav_num_iterations);
-        mat_slic_result = in_img;
-
-        // Get the segmented result.
-        cv::Mat mat_labels;
-        seeds->getLabels(mat_labels);
-
-        // Get contour to use as key point.
-        seeds->getLabelContourMask(mat_slic_mask,false);
-
-    }else if (in_img_type == MAP)
-    {
-        start = std::clock();
-
-        cv::cvtColor(in_img, mat_gray_img, cv::COLOR_BGR2GRAY);
-
-        // Generate Initial SEEDs for SLIC.
-        seeds = cv::ximgproc::createSuperpixelSEEDS(i_width           , i_height     , i_channels         , m_i_map_num_superpixels,
-                                                    m_i_map_num_levels, m_i_map_prior, m_i_map_num_histogram_bins, m_b_map_double_step    );
-        // Convert img type
-        cv::Mat mat_converted_img;
-        cv::cvtColor(in_img, mat_converted_img, cv::COLOR_BGR2HSV);
-
-        // Calculates the superpixel sgmentation on a given image with parameters.
-        seeds->iterate(mat_converted_img,m_i_uav_num_iterations);
-        mat_slic_result = in_img;
-
-        // Get the segmented result.
-        cv::Mat mat_labels;
-        seeds->getLabels(mat_labels);
-
-        // Get contour to use as key point.
-        seeds->getLabelContourMask(mat_slic_mask,false);
-    }
-        // Extaction Key points using SLIC Boundary mask and image
-        std::vector<cv::KeyPoint> vec_key_points;
-        ExtractKeypoints(mat_gray_img, mat_slic_mask, vec_key_points);
-        out_vec_key_points = vec_key_points;
-        std::cout << "Number of Key points from SLIC: " << vec_key_points.size() << std::endl;
-
-        // Compute descriptor from vector of keypoints.
-        if( in_descriptor_type == BRISK)
-        {
-            cv::Ptr<cv::BRISK> brisk_feature = cv::BRISK::create(m_i_threshold, m_i_octaves, m_f_pattern_scale);
-            brisk_feature->compute(in_img, vec_key_points, out_mat_descriptors);
-        }else if( in_descriptor_type == SIFT )
-        {
-            cv::Ptr<cv::SIFT> ptr_sift_feature = cv::SIFT::create(m_i_n_feature, m_i_n_octav_layers, m_d_contrast_th, m_d_edge_th, m_d_sigma);
-            ptr_sift_feature->compute(in_img, vec_key_points,out_mat_descriptors);
-        }
-        std::cout << "matrix type: " << out_mat_descriptors.type() << std::endl;
-        
-        // Time check for SLIC algorithm.
-        end = std::clock();
-        duration = (double)(end-start);
-        std::cout << "SLICK based keypoint and descriptor extraction duration: " << duration/CLOCKS_PER_SEC << "s." << std::endl;
-
-        return true;
-    return false;
-}
-
-bool ImageMatching::MatchImages(cv::Mat in_uav_img, cv::Mat in_map_img, 
-                                std::vector<cv::KeyPoint> in_vec_uav_keypoint, std::vector<cv::KeyPoint> in_vec_map_keypoint,
-                                cv::Mat in_mat_uav_descriptors, cv::Mat in_mat_map_descriptors, DescriptorType in_descriptor_type)
-{
-    if( in_vec_uav_keypoint.size() < m_i_num_keypoint_threshold)
-    {
-        std::cerr << "UAV Key points are too few." << std::endl;
-        return false;
-
-    }if( in_vec_map_keypoint.size() < m_i_num_keypoint_threshold)
-    {
-        std::cerr << "Map Key points are too few." << std::endl;
-        return false;
-    } if( in_mat_uav_descriptors.size().height < m_i_num_keypoint_threshold)
-    {
-        std::cerr << "UAV Descriptor  are too few." << std::endl;
-        return false;
-    } if( in_mat_map_descriptors.size().height < m_i_num_keypoint_threshold)
-    {
-        std::cerr << "Map Descriptor  are too few." << std::endl;
-        return false;
-    }
-    std::clock_t start, end;
-    double duration;
-
-    start = std::clock();
-    // Descriptor matching
-    std::vector<std::vector<cv::DMatch>> vvec_knn_matches;
-    if (in_descriptor_type == BRISK)
-    {
-    cv::FlannBasedMatcher obj_matcher = cv::FlannBasedMatcher(  cv::makePtr<cv::flann::LshIndexParams>(6,12,1),
-                                                                cv::makePtr<cv::flann::SearchParams>(50)      );
-    obj_matcher.knnMatch(in_mat_uav_descriptors, in_mat_map_descriptors, vvec_knn_matches, m_i_num_one_to_many);
-    }
-    else if (in_descriptor_type == SIFT)
-    {
-        cv::Ptr<cv::DescriptorMatcher> ptr_matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
-        ptr_matcher->knnMatch(in_mat_uav_descriptors, in_mat_map_descriptors,vvec_knn_matches, m_i_num_one_to_many);
-    }
-    end = std::clock();
-    duration = (double)(end-start);
-    std::cout << "FLANN-based featue matching duration: " << duration/CLOCKS_PER_SEC << "s." << std::endl;
-    std::cout << "UAV keypoint from mache result: " << vvec_knn_matches.size() << std::endl;
-    std::cout << "Map keypoint from mache result: " << vvec_knn_matches[0].size() << std::endl;
-    // Histogram voting using geographical(지리적) infomation.
-    start = std::clock();
-    cv::Point p_delta_translation;
-    // Todo
-    // this part can be replaced by drone coordinate..? --> It need to be check if the uav coordinate is weired, then the matching will not be work.
-    // GetCenterOfGeographyConstraint(vvec_knn_matches, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation);
+    m_b_show_match_result = true;
+    m_b_do_ratio_test = true; 
+    m_b_show_keypoint_result = false;
     
+    // For Ratio test
+    m_f_ratio_th  = 0.9;
+    // For SLIC-based Matching
+    m_i_num_one_to_many        = 500; 
+    m_i_num_keypoint_threshold = 1000;
+    // Histogram voting for geopraphical constriant
+    m_i_num_pixels_in_bin      = 1;
+    cv::Point2i m_delta_translation;
+    // Refinement matched result using template matching
+    m_i_kdtree_flann_search_param = 50;
+    m_d_radius_of_pixel           = 20;   // 찾을 경계의 반경
+    m_i_max_num_near_points       = 50;     // 찾을 주변점의 최대 개수
+    m_i_boundary_gap              = m_d_radius_of_pixel * 2;
+    m_i_template_size             = 25;
+    m_i_num_min_matched_pair      = 5;
 
-    end = std::clock();
-    std::cout << "Histogram voting duration: " << duration/CLOCKS_PER_SEC << "s." << std::endl;
-    // Matching refinement using Template matching with Matching cadidates.
-    std::vector<cv::DMatch> vec_refined_mathing_result;
-    RefineMatchedResult(in_uav_img, in_map_img, in_vec_uav_keypoint, in_vec_map_keypoint, p_delta_translation, vec_refined_mathing_result);
     return true;
 }
 
-bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img, 
+// Match two image using correspondece set via descriotor or other various methods.
+// Input  : Two images, keypoints, descriotors or correpondence setes.
+// Output : vector of DMatch object and result images.
+bool imageMatcher::MatchImages( cv::Mat in_img_1, cv::Mat in_img_2,
+                                std::vector<cv::KeyPoint> in_keypoint_1, std::vector<cv::KeyPoint> in_keypoint_2,
+                                cv::Mat in_desc_1, cv::Mat in_desc_2,
+                                KeyDescType in_desc_type,
+                                std::vector<cv::DMatch> &out_vec_dmatch )
+{
+    if (in_img_1.empty() || in_img_1.empty())
+    {
+        std::cerr << "[imageMatcher][MatchImage] Image is empty." << std::endl;
+        return false;
+    }
+
+    int i_num_closest_point;
+    if (m_b_do_ratio_test)
+        i_num_closest_point = 2;
+    else
+        i_num_closest_point = 1;
+    // Match two set of descriptors
+    std::vector<std::vector<cv::DMatch>> vvec_dmatch_knn;
+    switch (in_desc_type)
+    {
+        case TSIFT:
+        {
+            cv::Ptr<cv::DescriptorMatcher> ptr_descriptor_matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+            ptr_descriptor_matcher->knnMatch(in_desc_1, in_desc_2, vvec_dmatch_knn, i_num_closest_point);
+            break;
+        }
+        case TSURF:
+        {
+            cv::Ptr<cv::DescriptorMatcher> ptr_descriptor_matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+            // SURF is a floating-point descriptor NORM-L2 is used. -OPENCV-
+            ptr_descriptor_matcher->knnMatch(in_desc_1, in_desc_2, vvec_dmatch_knn, i_num_closest_point);
+            break;
+        }
+        case TBRIEF:
+        {
+            cv::Ptr<cv::DescriptorMatcher> ptr_descriptor_matcher = cv::DescriptorMatcher::create("BruteForce-Hamming"); // witch one is better? BruteForce-Hamming or cv::DescriptorMatcher::FLANNBASED?
+            ptr_descriptor_matcher->knnMatch(in_desc_1, in_desc_2, vvec_dmatch_knn, i_num_closest_point);
+            break;
+        }
+        case TORB:
+        {
+            cv::Ptr<cv::DescriptorMatcher> ptr_descriptor_matcher = cv::DescriptorMatcher::create("BruteForce-Hamming"); // witch one is better? BruteForce-Hamming or cv::DescriptorMatcher::FLANNBASED?
+            ptr_descriptor_matcher->knnMatch(in_desc_1, in_desc_2, vvec_dmatch_knn, i_num_closest_point);
+            /* code */
+            break;
+        }
+        case TAKAZE:
+        {
+            cv::Ptr<cv::DescriptorMatcher> ptr_descriptor_matcher = cv::DescriptorMatcher::create("BruteForce-Hamming"); // witch one is better? BruteForce-Hamming or cv::DescriptorMatcher::FLANNBASED?
+            ptr_descriptor_matcher->knnMatch(in_desc_1, in_desc_2, vvec_dmatch_knn, i_num_closest_point);
+            break;
+        }
+        case TSLIC:
+        {
+            std::vector<std::vector<cv::DMatch>> vvec_dmatch_knn_one_to_many;
+            cv::Ptr<cv::DescriptorMatcher> ptr_sift_matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+            ptr_sift_matcher->knnMatch(in_desc_1, in_desc_2, vvec_dmatch_knn_one_to_many, m_i_num_one_to_many);
+            // Histogram voting using geographical(지리적) infomation.
+            cv::Point p_delta_translation;
+            GetCenterOfGeographyConstraint(vvec_dmatch_knn_one_to_many, in_keypoint_1, in_keypoint_2, p_delta_translation);
+            RefineMatchedResult(in_img_1, in_img_2, in_keypoint_1, in_keypoint_2, p_delta_translation, out_vec_dmatch);
+            return true;
+        }
+        default:
+        {
+            std::cerr << "[imageMatcher][MatchImage] The Keypoint Type is wrong." << std::endl;
+            return false;
+        }
+    }
+
+    // Filter matches using the Lowe's ratio test.
+    if (m_b_do_ratio_test)
+    {
+        for (size_t idx = 0; idx < vvec_dmatch_knn.size(); idx++)
+        {
+            if(vvec_dmatch_knn[idx][0].distance < m_f_ratio_th * vvec_dmatch_knn[idx][1].distance)
+            {
+                out_vec_dmatch.push_back(vvec_dmatch_knn[idx][0]);
+            }
+        }
+    }
+    else
+    {
+        for (size_t idx = 0; idx < vvec_dmatch_knn.size(); idx++)
+        {
+            out_vec_dmatch.push_back(vvec_dmatch_knn[idx][0]);
+        }
+    }
+
+    return true;
+}
+
+
+void imageMatcher::ShowMatchingResult( cv::Mat in_img_1, cv::Mat in_img_2, 
+                                       std::vector<cv::KeyPoint> in_vec_keypoints_1, std::vector<cv::KeyPoint> in_vec_keypoints_2,
+                                       std::vector<cv::DMatch> in_vec_dmatch, cv::Mat &out_img_matched)
+{
+    cv::drawMatches( in_img_1, in_vec_keypoints_1, in_img_2, in_vec_keypoints_2, in_vec_dmatch, out_img_matched,
+                     cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    cv::imshow("Matching Result", out_img_matched);
+    cv::waitKey();
+    cv::destroyAllWindows();
+}
+
+
+cv::Mat imageMatcher::GetHomography( cv::Mat in_img_1, cv::Mat in_img_2,
+                                     std::vector<cv::KeyPoint> in_vec_keypoint_1, std::vector<cv::KeyPoint> in_vec_keypoint_2,
+                                     std::vector<cv::DMatch> in_vec_dmatch, cv::Mat in_matched_img)
+{
+    // Localize the object
+    std::vector<cv::Point2f>  vec_p2f_object;
+    std::vector<cv::Point2f>  vec_p2f_scene;
+    for (size_t idx = 0; idx < in_vec_dmatch.size(); idx++)
+    {
+        vec_p2f_object.push_back( in_vec_keypoint_1[in_vec_dmatch[idx].queryIdx].pt );
+        vec_p2f_scene.push_back( in_vec_keypoint_2[in_vec_dmatch[idx].trainIdx].pt );
+    }
+
+    // Find Homography.
+    cv::Mat mat_mask;
+    cv::Mat mat_homography = cv::findHomography(vec_p2f_object, vec_p2f_scene, cv::RANSAC, 0.5,mat_mask);
+
+    // Get the corners from the image_1.
+    std::vector<cv::Point2f> vec_p2f_obj_corners(4);
+    vec_p2f_obj_corners[0] = cv::Point2f(0,0);
+    vec_p2f_obj_corners[1] = cv::Point2f((float)in_img_1.cols,0);
+    vec_p2f_obj_corners[2] = cv::Point2f((float)in_img_1.cols,(float)in_img_1.rows);
+    vec_p2f_obj_corners[3] = cv::Point2f(0,(float)in_img_1.rows);
+    std::vector<cv::Point2f> vec_p2f_scene_corners(4);
+    
+    // Check if the homography is working okay.
+    // find four corner of the map img using homography with RANSAC algorithm.
+    cv::perspectiveTransform(vec_p2f_obj_corners, vec_p2f_scene_corners, mat_homography);
+
+    cv::Mat mat_match_result;
+    cv::drawMatches(in_img_1, in_vec_keypoint_1, in_img_2, in_vec_keypoint_2, in_vec_dmatch, mat_match_result,
+                     cv::Scalar::all(-1), cv::Scalar::all(-1), mat_mask, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+
+    // Draw Lines for Verification.
+    cv::line( mat_match_result, vec_p2f_scene_corners[0] + cv::Point2f((float)in_img_1.cols, 0),
+              vec_p2f_scene_corners[1] + cv::Point2f((float)in_img_1.cols, 0), cv::Scalar(0, 0, 255), 8);
+    cv::line( mat_match_result, vec_p2f_scene_corners[1] + cv::Point2f((float)in_img_1.cols, 0),
+              vec_p2f_scene_corners[2] + cv::Point2f((float)in_img_1.cols, 0), cv::Scalar(0, 0, 255), 8);
+    cv::line( mat_match_result, vec_p2f_scene_corners[2] + cv::Point2f((float)in_img_1.cols, 0),
+              vec_p2f_scene_corners[3] + cv::Point2f((float)in_img_1.cols, 0), cv::Scalar(0, 0, 255), 8);
+    cv::line( mat_match_result, vec_p2f_scene_corners[3] + cv::Point2f((float)in_img_1.cols, 0),
+              vec_p2f_scene_corners[0] + cv::Point2f((float)in_img_1.cols, 0), cv::Scalar(0, 0, 255), 8);
+
+
+    cv::imshow("Good Matches & Localization", mat_match_result);
+    cv::waitKey();
+    cv::destroyAllWindows();
+
+    return mat_match_result;
+}
+
+bool imageMatcher::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img, 
                                          std::vector<cv::KeyPoint> in_vec_uav_keypoints, std::vector<cv::KeyPoint> in_vec_map_keypoints,
                                          cv::Point in_translation,
                                          std::vector<cv::DMatch> out_refined_matching_result)
@@ -260,8 +266,6 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
         int i_boudnary_top     = i_query_keypoint_y - m_d_radius_of_pixel - in_translation.y;
         int i_boudnary_bot     = i_query_keypoint_y + m_d_radius_of_pixel - in_translation.y;
         
-
-        
         // 일차적으로 추출한 Map 키포인트들 중 가까운 애들만 찾는 과정
         for (int idx_near_keypoint = 0; idx_near_keypoint < vecp_interest_keypoints_loc.size(); idx_near_keypoint++) 
         {
@@ -288,11 +292,11 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
                     }
                 }
                 // 하나의 UAV 키포인트에 대해 검사가 다 끝나면 점수가 가장 높은 점을 Dmatch로 만들어서 저장
-
             }
         }
-        // std::cout << "biggest  near key point x: " << i_biggest_x  << std::endl;
+        
         // std::cout << "biggest  near key point y: " << i_biggest_y  << std::endl;
+        // std::cout << "biggest  near key point x: " << i_biggest_x  << std::endl;
         // std::cout << "smallest near key point x: " << i_smallest_x << std::endl;
         // std::cout << "smallest near key point y: " << i_smallest_y << std::endl;
         
@@ -324,51 +328,13 @@ bool ImageMatching::RefineMatchedResult( cv::Mat in_uav_img, cv::Mat in_map_img,
     return true;
 }
 
-bool ImageMatching::ExtractKeypoints(cv::Mat in_mat_gray_img, cv::Mat in_mat_slic_mask, std::vector<cv::KeyPoint>  &out_vector_keypoints)
-{
-    for(int idx_y = m_i_boundary_gap; idx_y < in_mat_slic_mask.rows-m_i_boundary_gap; idx_y++)
-    {
-        const unsigned char* Mi                      = in_mat_slic_mask.ptr<unsigned char>(idx_y                   );
-        const unsigned char* ptr_gray_img_row_hight  = in_mat_gray_img .ptr<unsigned char>(idx_y - m_i_boundary_gap);
-        const unsigned char* ptr_gray_img_row_mid    = in_mat_gray_img .ptr<unsigned char>(idx_y                   );
-        const unsigned char* ptr_gray_img_row_bottom = in_mat_gray_img .ptr<unsigned char>(idx_y + m_i_boundary_gap);
-        // TODO
-        // Sampling method need to add if the algoritm runtime is too long.
-        for(int idx_x = 2; idx_x < in_mat_slic_mask.cols-2; idx_x++)
-        {
-            int i_element      = Mi[idx_x];
-            int i_left_pixel   = ptr_gray_img_row_mid   [idx_x - m_i_boundary_gap];
-            int i_right_pixel  = ptr_gray_img_row_mid   [idx_x + m_i_boundary_gap];
-            int i_upper_pixel  = ptr_gray_img_row_hight [idx_x                   ];
-            int i_bottom_pixel = ptr_gray_img_row_bottom[idx_x                   ]; 
-            if ( i_element      == 255  &&
-                 i_left_pixel   != 0    &&
-                 i_right_pixel  != 0    &&
-                 i_upper_pixel  != 0    &&
-                 i_bottom_pixel != 0     ) // SLIC Boundary output is 255 which is max of uchar. but why?
-            {
-                // Generate Key point object and add to vector.
-                cv::Point    p_slick_point(idx_x, idx_y);
-                cv::KeyPoint slic_key_point(p_slick_point, m_i_keypoint_size, m_f_keypoint_angle);
-                out_vector_keypoints.push_back(slic_key_point);
-            }
-        }
-    }
-    if(out_vector_keypoints.empty() == true)
-    {
-        std::cerr << "Keypoint vector is empty!" << std::endl;
-        return false;
-    }
-    return true;
-}
-
 // Find Geographical constraints using one to many constrainst
-bool ImageMatching::GetCenterOfGeographyConstraint( std::vector<std::vector<cv::DMatch>> in_vvec_dmatch_reuslt,
+bool imageMatcher::GetCenterOfGeographyConstraint( std::vector<std::vector<cv::DMatch>> in_vvec_dmatch_reuslt,
                                                     std::vector<cv::KeyPoint> in_vec_uav_keypoints,
                                                     std::vector<cv::KeyPoint> in_vec_map_keypoints,
                                                     cv::Point &out_center_location)
 {
-    if( in_vvec_dmatch_reuslt.size() < m_i_keypoint_size)
+    if( in_vvec_dmatch_reuslt.size() < m_i_num_min_matched_pair)
     {
         std::cerr << "Datching result is too few." << std::endl;
         return false;
@@ -497,7 +463,7 @@ bool ImageMatching::GetCenterOfGeographyConstraint( std::vector<std::vector<cv::
     return true;
 }
 
-void ImageMatching::ShowKeypoints(cv::Mat in_img, std::vector<cv::KeyPoint> in_vec_key_points, cv::Mat &out_mat_keypoint_img)
+void imageMatcher::ShowKeypoints(cv::Mat in_img, std::vector<cv::KeyPoint> in_vec_key_points, cv::Mat &out_mat_keypoint_img)
 {
     in_img.copyTo(out_mat_keypoint_img);
 	std::cout << "UAV - Number of Key points: " << in_vec_key_points.size()  << std::endl;
@@ -510,7 +476,7 @@ void ImageMatching::ShowKeypoints(cv::Mat in_img, std::vector<cv::KeyPoint> in_v
 }
 
 
-bool ImageMatching::SetGeographicConstraints(cv::Point2i in_delta_translation)
+bool imageMatcher::SetGeographicConstraints(cv::Point2i in_delta_translation)
 {
     m_delta_translation.x = in_delta_translation.x;
     m_delta_translation.y = in_delta_translation.y;
