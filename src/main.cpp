@@ -22,7 +22,7 @@
 
 
 // Debug Variables
-bool   m_b_visualize   = false;
+bool   m_b_visualize   = true;
 enum MatchingMethod
 {};
 
@@ -78,7 +78,7 @@ int main()
 	}
 
 	// Detect Key points
-	KeyDescType 	 keytype  = TBRIEF;
+	KeyDescType 	 keytype  = TAKAZE;
 	keyPointDetector KD;
 	std::vector<cv::KeyPoint> vec_map_keypoints;
 	std::vector<cv::KeyPoint> vec_uav_keypoints;

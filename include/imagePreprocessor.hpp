@@ -38,6 +38,8 @@ private:
     /* Variables */
     bool m_b_initiated = true;
 
+    bool is_sim_data   = true;
+
     // UAV - file path and name
     std::string m_str_uav_img_path;
     std::string m_str_uav_img_file_name;
@@ -98,12 +100,12 @@ imagePreprocessor::~imagePreprocessor()
 
 bool imagePreprocessor::init()
 {
-    m_str_uav_img_path         = "/home/youngrok/git_ws/image_matching_btw_aeiral_uav/01_uav_images/orthophotos_100m/";
-    m_str_uav_img_file_name    = "DJI_0378.JPG";
+    m_str_uav_img_path         = "/home/youngrok/git_ws/image_matching_btw_aeiral_uav/01_uav_images/sim_imgs/";
+    m_str_uav_img_file_name    = "img_PX4_CameraRGB_0_1679017777493315700.png"; 
     m_str_uav_img_path_name    = m_str_uav_img_path + m_str_uav_img_file_name ;
     
     m_str_map_path             = "/home/youngrok/git_ws/image_matching_btw_aeiral_uav/02_map_images/";
-    m_str_map_file_name        = "konkuk_latlon_geo_tagged.tif";
+    m_str_map_file_name        = "sim_map_img.png";    
     m_str_map_img_path_name    = m_str_map_path + m_str_map_file_name ;
 
     if(ImportImages() == false)
@@ -121,9 +123,9 @@ bool imagePreprocessor::init()
     m_f_gsd_uav_img             = m_f_altitude_uav*m_f_width_ccd_sensor/
                                   (m_f_focal_length_uav*m_f_width_image_uav); // [cm]
     m_f_gsd_aerial_map          = 25;                                         // [cm] ground sampling distance: Check the information from the institude of aerial image.
-    m_f_resize_factor           = m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
+    m_f_resize_factor           = 1; //m_f_gsd_uav_img/m_f_gsd_aerial_map;         // resize factor to match gsd of two image
     m_veci_target_size_uav_img  = { int(m_f_width_image_uav * m_f_resize_factor), int(m_f_height_image_uav * m_f_resize_factor)};
-    m_f_uav_yaw                 = -130.0;
+    m_f_uav_yaw                 = 0.0;// -130.0;
     m_p2d_uav_lonlat.x = 37.54246977777778; //37.54324908333 
     m_p2d_uav_lonlat.y = 127.07799991666666; //127.0779322777 maybe wrong?
 
@@ -223,14 +225,22 @@ bool imagePreprocessor::GetImages(cv::Mat &out_uav_img, cv::Mat &out_map_img)
         std::cerr << "imagePreprocessor Class has failed to initiate." << std::endl;
         return false;
     }
-    if( PreprocessImages() == false )
+    if(is_sim_data == false)
     {
-        std::cerr << "imagePreprocessor has failed." << std::endl;
-        return false;
-    }   
-    
+        if( PreprocessImages() == false )
+        {
+            std::cerr << "imagePreprocessor has failed." << std::endl;
+            return false;
+        }   
     out_uav_img = m_mat_uav_img_preprocessed;
     out_map_img = m_mat_map_img;
+    }
+    else
+    {
+        out_uav_img = m_mat_uav_img;
+        out_map_img = m_mat_map_img;
+    }
+
     return true;
 }
 
@@ -244,7 +254,6 @@ bool imagePreprocessor::GetCenterOfSubMap(cv::Point2d in_p2d_coordinate_drone, c
     // Coordinate conversion: nort(.x) -> image y-axis, east(.y) -> iamge x-axis
     out_p_submap_center.x = (int)d_submap_center_lat; 
     out_p_submap_center.y = (int)d_submap_center_lon;
-    
     
     return true;
 }
