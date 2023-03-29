@@ -10,12 +10,12 @@ uavSearchTarget = uavImgPath + "*DJI*";
 
 
 uavImgFileName = dir(uavSearchTarget);
-mapImgFileName = mapImgPath + "konkuk_latlon_geo_tagged.tif";
+mapImgFileName = mapImgPath + "konkuk_latlon_geo_tagged.tiff";
 numUavImg = length(uavImgFileName);
 arrUavImg = cell(1, numUavImg);
 infoUavImg = cell(1, numUavImg);
 fprintf("Loading Images now...\n");
-[mapImg, referenceArr] = readgeoraster(mapImgFileName, "CoordinateSystemType","geographic");
+[mapImg, referenceArr] = readgeoraster(mapImgFileName);
 
 for i = 1:1:numUavImg
     imgPathAndName = uavImgPath + uavImgFileName(i).name;
@@ -85,12 +85,26 @@ mapLonLim = referenceArr.LongitudeLimits;
 mapSubImgCell = cell(1,numUavImg);
 [imgWidth, imgHeight, imgChannels] = size(arrUavImg{1});
 
+% Get GSD(Ground Sampling Distance) of UAV Img
+ccdWidth  = 4000;
+
 
 format longEng
 for idx = 1:1:numUavImg
     uavLat = infoUavImg{idx}.GPSInfo.GPSLatitude(1) + infoUavImg{idx}.GPSInfo.GPSLatitude(2)/100 + infoUavImg{idx}.GPSInfo.GPSLatitude(3)/10000;
     uavLon = infoUavImg{idx}.GPSInfo.GPSLongitude(1) + infoUavImg{idx}.GPSInfo.GPSLongitude(2)/100 + infoUavImg{idx}.GPSInfo.GPSLongitude(3)/10000;
     uavAlt = infoUavImg{idx}.GPSInfo.GPSAltitude;
+    
+    altitude_uav         = uav_img.gps_altitude * 100;   % [m]
+    focal_length         = uav_img.focal_length / 1000 ; % [mm to m]
+    width_image          = uav_img.image_width;          % [px]
+    height_image         = uav_img.image_height;         % [px]
+    width_ccd_sensor     = 6.4/10;                       % [mm to cm] width of ccd sensor: check spec of camera.
+    gsd_uav_img          = altitude_uav*width_ccd_sensor/(focal_length*width_image); % [cm]
+    gsd_aerial_map       = 25;                           % [cm] ground sampling distance: Check the information from the institude of aerial image.
+    gsd_magic_factor     = 1;
+    resize_factor        = gsd_uav_img/gsd_aerial_map*gsd_magic_factor; % resize factor to match gsd of two image
+    target_size_uav_img  = np.int16(np.array([width_image, height_image]) * resize_factor); 
 
     subMapCenterPixel = [  ]
 end
